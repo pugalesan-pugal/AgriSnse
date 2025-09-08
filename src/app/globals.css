@@ -3,6 +3,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* AgriSense earthy palette */
+  --as-forest: #2e6b3d;
+  --as-leaf: #3fa34d;
+  --as-soil: #8b5e3c;
+  --as-clay: #c07a46;
+  --as-sand: #f1e6d6;
+  --as-sun: #ffc857;
 }
 
 @theme inline {
@@ -20,7 +27,61 @@
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1200px 600px at 80% -50%, var(--as-sun) 0%, transparent 60%),
+    linear-gradient(180deg, #f9f6ef 0%, #ffffff 10%, var(--as-sand) 100%);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Reusable utilities */
+.btn-primary {
+  background: linear-gradient(180deg, var(--as-leaf), var(--as-forest));
+  color: #ffffff;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  box-shadow: 0 6px 14px rgba(46, 107, 61, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 18px rgba(46,107,61,0.35); }
+.btn-primary:active { transform: translateY(0); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: rgba(255,255,255,0.85);
+  color: #064e3b;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.container-responsive { width: 100%; max-width: 80rem; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; }
+
+/* Animations */
+@keyframes floatSlow {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-float-slow { animation: floatSlow 6s ease-in-out infinite; }
+.animate-fade-up { animation: fadeUp 700ms ease-out both; }
+
+/* Form fields - ensure visible text/caret in all themes */
+.input-field {
+  color: #1f2937; /* slate-800 */
+  background: #ffffff;
+  caret-color: #14532d; /* emerald-900 */
+}
+.input-field::placeholder { color: #6b7280; /* gray-500 */ opacity: 1; }
