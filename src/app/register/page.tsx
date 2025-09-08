@@ -8,9 +8,15 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpEmail, setOtpEmail] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,20 +28,45 @@ export default function RegisterPage() {
     }
     try {
       setLoading(true);
-      const res = await fetch("/api/sign-up", {
+      const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to sign up");
-      setResult(`Account placeholder created with code ${data.code}`);
-      setName(""); setEmail(""); setPassword(""); setConfirm("");
+      if (!res.ok) throw new Error(data.error || "Failed to send OTP");
+      setOtpSent(true);
+      setOtpEmail(email);
+      setResult("OTP sent to your email. Please enter it below.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unexpected error";
       setError(msg);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setResult(null);
+    if (!otp) { setError("Enter the OTP sent to your email"); return; }
+    try {
+      setVerifying(true);
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, otp }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to verify OTP");
+      setResult(`Account created successfully with code ${data.code}`);
+      setName(""); setEmail(""); setPassword(""); setConfirm(""); setOtp(""); setOtpSent(false); setOtpEmail(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unexpected error";
+      setError(msg);
+    } finally {
+      setVerifying(false);
     }
   }
 
@@ -51,18 +82,36 @@ export default function RegisterPage() {
           <input value={name} onChange={(e)=>setName(e.target.value)} required className="w-full rounded-xl border border-emerald-900/15 px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 input-field" placeholder="A. Kumar" />
 
           <label className="block text-sm font-semibold mb-1" style={{ color: "#275539" }}>Email</label>
-          <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required className="w-full rounded-xl border border-emerald-900/15 px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 input-field" placeholder="farmer@example.com" />
+          <input type="email" value={email} onChange={(e)=>{ setEmail(e.target.value); setOtpSent(false); setOtp(""); setOtpEmail(null); setResult(null); }} required className="w-full rounded-xl border border-emerald-900/15 px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 input-field" placeholder="farmer@example.com" />
 
           <label className="block text-sm font-semibold mb-1" style={{ color: "#275539" }}>Password</label>
-          <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required className="w-full rounded-xl border border-emerald-900/15 px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 input-field" placeholder="••••••••" />
+          <div className="relative">
+            <input type={showPwd ? "text" : "password"} value={password} onChange={(e)=>setPassword(e.target.value)} required className="w-full rounded-xl border border-emerald-900/15 px-4 py-3 pr-12 mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 input-field" placeholder="••••••••" />
+            <button type="button" onClick={()=>setShowPwd(s=>!s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold chip">{showPwd ? "Hide" : "Show"}</button>
+          </div>
 
           <label className="block text-sm font-semibold mb-1" style={{ color: "#275539" }}>Retype password</label>
-          <input type="password" value={confirm} onChange={(e)=>setConfirm(e.target.value)} required className="w-full rounded-xl border border-emerald-900/15 px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 input-field" placeholder="••••••••" />
+          <div className="relative">
+            <input type={showConfirm ? "text" : "password"} value={confirm} onChange={(e)=>setConfirm(e.target.value)} required className="w-full rounded-xl border border-emerald-900/15 px-4 py-3 pr-12 mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 input-field" placeholder="••••••••" />
+            <button type="button" onClick={()=>setShowConfirm(s=>!s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold chip">{showConfirm ? "Hide" : "Show"}</button>
+          </div>
 
           {error && <div className="mb-3 chip" style={{ color: "#7c2d12", background: "#ffedd5" }}>{error}</div>}
           {result && <div className="mb-3 chip" style={{ color: "#064e3b", background: "#d1fae5" }}>{result}</div>}
 
-          <button type="submit" disabled={loading} className="btn-primary w-full mt-2 transition-transform duration-200 hover:scale-[1.01]">{loading ? "Saving..." : "Create account"}</button>
+          {!otpSent ? (
+            <button type="submit" disabled={loading} className="btn-primary w-full mt-2 transition-transform duration-200 hover:scale-[1.01]">{loading ? "Sending OTP..." : "Send OTP"}</button>
+          ) : (
+            <div className="mt-2">
+              {otpEmail && <div className="mb-2 text-sm" style={{ color: "#275539" }}>We sent a code to <b>{otpEmail}</b></div>}
+              <label className="block text-sm font-semibold mb-1" style={{ color: "#275539" }}>Enter OTP</label>
+              <input inputMode="numeric" pattern="[0-9]*" maxLength={6} value={otp} onChange={(e)=>setOtp(e.target.value)} required className="w-full rounded-xl border border-emerald-900/15 px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-400/60 input-field" placeholder="6-digit code" />
+              <div className="flex gap-3">
+                <button onClick={handleVerify} disabled={verifying} className="btn-primary flex-1 transition-transform duration-200 hover:scale-[1.01]">{verifying ? "Verifying..." : "Verify & Create Account"}</button>
+                <button type="button" disabled={loading} onClick={handleSubmit} className="chip" aria-label="Resend OTP">Resend</button>
+              </div>
+            </div>
+          )}
           <div className="mt-4 text-sm flex items-center justify-between" style={{ color: "#275539" }}>
             <Link href="/login" className="underline">Back to login</Link>
           </div>

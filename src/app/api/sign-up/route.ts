@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getOrInitFirebaseApp } from "@/lib/server/firebaseAdmin";
+import bcrypt from "bcryptjs";
 
 type SignUpBody = {
   name: string;
@@ -36,11 +37,12 @@ export async function POST(request: NextRequest) {
     const farmersRef = db.collection("farmers");
     const userDoc = farmersRef.doc();
 
+    const passwordHash = await bcrypt.hash(password, 10);
     await userDoc.set({
       code,
       name: name.trim(),
       email: emailLower,
-      password, // NOTE: store hashed in real systems. Kept plain per request not to create auth now.
+      passwordHash,
       createdAt: FieldValue.serverTimestamp(),
     });
 

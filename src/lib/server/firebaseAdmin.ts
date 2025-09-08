@@ -22,6 +22,7 @@ export function getOrInitFirebaseApp() {
             process.env.FIREBASE_CREDENTIALS_PATH,
             join(process.cwd(), "agrisense-471508-efdec6b26340.json"),
             join(process.cwd(), "agrisense-fd58c-firebase-adminsdk-fbsvc-c75ce13780.json"),
+            join(process.cwd(), "agrisense-eb88e-firebase-adminsdk-fbsvc-964328214f.json"),
           ].filter(Boolean) as string[];
           let filePath: string | undefined;
           for (const p of candidatePaths) {
@@ -57,6 +58,7 @@ export function getOrInitFirebaseApp() {
     process.env.FIREBASE_CREDENTIALS_PATH,
     join(process.cwd(), "agrisense-471508-efdec6b26340.json"),
     join(process.cwd(), "agrisense-fd58c-firebase-adminsdk-fbsvc-c75ce13780.json"),
+    join(process.cwd(), "agrisense-eb88e-firebase-adminsdk-fbsvc-964328214f.json"),
   ].filter(Boolean) as string[];
   try {
     let filePath: string | undefined;

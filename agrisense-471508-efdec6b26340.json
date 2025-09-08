@@ -1,0 +1,13 @@
+{
+    "type": "service_account",
+    "project_id": "agrisense-471508",
+    "private_key_id": "efdec6b26340e43fd1db7c09413066030f35ba1b",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCf/hrz88Q3kfjr\n71zf6KR3A48Up0H4EexTSIXeWxdFYHwbpNDPzHqpjt06VS8+65WkVGj7EWLfU61U\nMzZoobPyPUJBPmK5Z31NjEZg43o7nH+6yJOVhDMKf5zCeudMdx3Lev/4l9AslHps\nd0aRhHStUUW6TrD91OfMtNCTttdO4eC4arQtO7/tKz8Zvrf6Ym0aA5MCnrEVAhZY\nEO8hDfs8JaRiWrjtHGAOgsjO54+80gj9nxfeVfCYadYvprup7R+l5yrt2lZBV45E\ndLV86EE6jSV3hwtkn792o/Uap6yYXhf2KVZWFT5n6njQh0CSrWjdZWI8YRZUhO77\nVEmMSdNlAgMBAAECggEADEgue4HAE2ACUuJaJ9otHfHI/xXj6448rRwJIsutWqcQ\nf/LEEN+qnu+Xrg2yBcuB/k54jKWGCIzc5nTT/W5EaRkox+dpHsCCDvzwvilYTdEy\nwPz6z2SJoomvWAKlVOpkACXeFpBY68MuLrttUGhxqIhvqOC3l5TLgpxy0pQbrTNs\nnG3WlKuUmdUHYGwoDDYG/7E1RUwGtk1+Fq8ISXQC6OZPwlRAzsbkIebkoUNvMnRB\nV1Sn0SONsOKSwY+aeldKB8BFiM8kt8iEDV5mym7FbSJaencDpIT3RvCWRLx1CkzA\nJaWG8M5bEb9Ye/xqQTtT0YG0XZ3v5m83w9sXNwbFgQKBgQDe1kcY4x21eZXEEOpU\nQCj3CiexpujfvBkbKgRaN1h/E5E9+a6H9wcQ5NAxtz0/U1OSCZdw97i9ofXKVPxf\nVAXRH5jNd+mWAw+L4TdoO8JI2pSjxw8IbOg+PhaBJ8BuqIC3sSsdx6Ku4dYqQKWD\nmoWmJpnlgPv2Y0AYRzDUPrv9oQKBgQC3zY8S/rLDMTLODhgx14e1/Lc+zrGyFmTD\nZsd7ZSO7t8HofOyNntTk4CsOw83o6yz1RQnIFodGyQ0F/uB/9SIPOOU5IANMBtss\n+96zCC4RajWwgygRCRaeR+AuOHn0EKUgPJATsveuTbqi9mtRUNFBHp+hm1+NU0Q3\nyZ5+TbUXRQKBgDVVyDKWuZekAEqrWcrMiIGIdrO4pWhXlxK/XcdSE+Zmgo744eM9\nJv3OJl6f4xLzGL+NeCfbwuXwi+nfqYAPlkzVaTdUih4ToXbzctWJ6BiT6JvCm0CD\nAJtVNQG4yAA0aIqO5yj7jV6aQy5dxr/XDkIUXyVlV+lDHCYzc+Z5FXnBAoGBAI8n\nT47IxqwWDm7ENX3kUvOf34zQaT++Bz7VNvrZXAphZWpQmeD3WvLj0UVPpXkKadqh\nqauoODYecsE/sNSYNK3Mb2OdllPJZz1S8jFYZqDzqttOW49hF7exXV5CaGF58VH5\nOXHOSu/75Cf2asFLg58HXeb9X19wAcq9gm720NtNAoGBAMMaHXmNLBqf7zUogxCc\nmDJR3Uvei5mh0HcGe4v/qaXXeKYzLJ0HKiRiBcL3kwTT1C7On+GjU4stsQWnLFeO\nAOvXaHbyppT6LviA7f6Y1eSsWR8CNLY1Egmlm2mDzovvsrtVpu+/1y3KIFk6jZNu\nqBxpztxMUI0aKvK854lY6zat\n-----END PRIVATE KEY-----\n",
+    "client_email": "agrisense-service@agrisense-471508.iam.gserviceaccount.com",
+    "client_id": "108427624371868844870",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/agrisense-service%40agrisense-471508.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+  }
