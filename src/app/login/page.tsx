@@ -2,16 +2,37 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Placeholder: plug into auth later
-    alert(`Login attempted for ${email}`);
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed");
+      // Persist session minimally in localStorage
+      localStorage.setItem("agrisense.user", JSON.stringify({ id: data.id, code: data.code, name: data.name, email: data.email }));
+      router.push("/dashboard");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unexpected error";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -56,7 +77,8 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <button type="submit" className="btn-primary w-full mt-2 transition-transform duration-200 hover:scale-[1.01]">Sign In</button>
+          {error && <div className="mb-3 chip" style={{ color: "#7c2d12", background: "#ffedd5" }}>{error}</div>}
+          <button disabled={loading} type="submit" className="btn-primary w-full mt-2 transition-transform duration-200 hover:scale-[1.01]">{loading ? "Signing in..." : "Sign In"}</button>
           <div className="mt-4 text-sm flex items-center justify-between" style={{ color: "#275539" }}>
             <Link href="#" className="underline">Forgot password?</Link>
             <Link href="/register" className="underline">Create account</Link>
