@@ -59,9 +59,26 @@ export default function ProfilingForm() {
     );
   }
 
+  // Read minimal session for code display
+  let code: string | null = null;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("agrisense.user");
+      if (raw) {
+        const u = JSON.parse(raw);
+        code = u?.code ?? null;
+      }
+    } catch {}
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold">Farmer & Farm Profiling</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Farmer & Farm Profiling</h2>
+        {code && (
+          <div className="px-3 py-1 rounded-full text-sm border border-neutral-300 bg-neutral-50">Code: <span className="font-semibold">{code}</span></div>
+        )}
+      </div>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <label className="text-sm text-neutral-600">Farmer Name</label>

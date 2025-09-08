@@ -17,15 +17,47 @@ export default function ChatModule() {
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text, ts: Date.now() };
     setMessages((m) => [...m, userMsg]);
 
-    // TODO: Replace with GPT API call; placeholder echo
-    const reply: Message = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: `Placeholder response for: ${text}`,
-      ts: Date.now(),
-    };
-    setMessages((m) => [...m, reply]);
-    setInput("");
+    try {
+      console.log("[ChatModule] sending to /api/chat-ollama", {
+        model: "mistral:latest",
+        history: messages.length,
+        promptPreview: text.slice(0, 100),
+      });
+      const resp = await fetch("/api/chat-ollama", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "mistral:latest",
+          messages: [
+            ...messages.map(({ role, content }) => ({ role, content })),
+            { role: "user", content: text },
+          ],
+        }),
+      });
+      console.log("[ChatModule] response status", resp.status);
+      if (!resp.ok) throw new Error("Request failed");
+      const data = await resp.json();
+      console.log("[ChatModule] response json preview", (data?.message?.content || "").slice(0, 120));
+      const content = data?.message?.content || "";
+      const reply: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: content || "(no response)",
+        ts: Date.now(),
+      };
+      setMessages((m) => [...m, reply]);
+    } catch (e) {
+      console.error("[ChatModule] error", e);
+      const errMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Error connecting to Ollama. Ensure the server is running.",
+        ts: Date.now(),
+      };
+      setMessages((m) => [...m, errMsg]);
+    } finally {
+      setInput("");
+    }
   }
 
   async function toggleRecord() {

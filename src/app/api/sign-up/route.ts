@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { getOrInitFirebaseApp } from "@/lib/server/firebaseAdmin";
+import { getOrInitFirebaseApp, getAdminInitInfo } from "@/lib/server/firebaseAdmin";
 
 type SignUpBody = {
   name: string;
@@ -10,11 +10,13 @@ type SignUpBody = {
 
 export async function POST(request: NextRequest) {
   try {
+    const startedAt = Date.now();
     await getOrInitFirebaseApp();
     const db = getFirestore();
 
     const body = (await request.json()) as Partial<SignUpBody>;
     const { name, email, password } = body;
+    console.info("[sign-up] incoming", { name, email });
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
@@ -53,10 +55,16 @@ export async function POST(request: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     });
 
+    const durationMs = Date.now() - startedAt;
+    console.info("[sign-up] stored", { id: userDoc.id, code, durationMs });
     return NextResponse.json({ ok: true, code, id: userDoc.id, collection: "farmers" });
-  } catch (err) {
-    console.error("sign-up error", err);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    const code = (err as Record<string, unknown>)?.code as string | undefined;
+    const details = (err as Record<string, unknown>)?.details as string | undefined;
+    const project = getAdminInitInfo()?.projectId;
+    console.error("[sign-up] error", { message, code, details, project });
+    return NextResponse.json({ error: message || "Internal error", code, details, project }, { status: 500 });
   }
 }
 
