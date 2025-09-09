@@ -1,41 +1,38 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { LandProvider, useLand } from "./contexts/LandContext";
 import Sidebar from "./components/Sidebar";
 import ProfilingForm from "./components/ProfilingForm";
 import ChatModule from "./components/ChatModule";
 import ActivityModule from "./components/ActivityModule";
 import LandManagement from "./components/LandManagement";
 import RightPanels from "./components/RightPanels";
+import ActiveLandDisplay from "./components/ActiveLandDisplay";
 import { Land } from "./components/types";
 
 export type ModuleKey = "profiling" | "chat" | "land" | "activities";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const [activeModule, setActiveModule] = useState<ModuleKey>("profiling");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
-  const [lands, setLands] = useState<Land[]>([]);
   const [landToEditId, setLandToEditId] = useState<string | null>(null);
+  const { lands, activeLandId, setActiveLandId, refreshLands } = useLand();
 
   const MainContent = useMemo(() => {
     switch (activeModule) {
       case "profiling":
-        return <ProfilingForm />;
+        return (
+          <ProfilingForm 
+            onNavigateToLandManagement={() => setActiveModule("land")}
+          />
+        );
       case "chat":
         return <ChatModule />;
       case "land":
         return (
           <LandManagement
-            lands={lands}
             landToEditId={landToEditId}
-            onUpsert={(entry, editingId) => {
-              setLands((prev) => {
-                if (editingId) {
-                  return prev.map((l) => (l.id === editingId ? entry : l));
-                }
-                return [entry, ...prev];
-              });
-            }}
             clearEdit={() => setLandToEditId(null)}
           />
         );
@@ -44,7 +41,7 @@ export default function DashboardPage() {
       default:
         return null;
     }
-  }, [activeModule, lands, landToEditId]);
+  }, [activeModule, lands, landToEditId, activeLandId]);
 
   return (
     <div className="min-h-screen w-full bg-neutral-50 text-neutral-900 flex overflow-hidden">
@@ -64,6 +61,7 @@ export default function DashboardPage() {
         <section
           className="w-full md:w-[58%] bg-white rounded-xl shadow-sm border border-neutral-200 p-4 md:p-6 overflow-y-auto transition-all duration-300 ease-out"
         >
+          <ActiveLandDisplay />
           {MainContent}
         </section>
 
@@ -72,6 +70,14 @@ export default function DashboardPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <LandProvider>
+      <DashboardContent />
+    </LandProvider>
   );
 }
 

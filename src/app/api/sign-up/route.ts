@@ -46,11 +46,17 @@ export async function POST(request: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    // Optional: create a structured subcollection for future data (profiles, activities, etc.)
+    // Create initial profile structure
     await userDoc.collection("profile").doc("basic").set({
-      name: name.trim(),
-      email: emailLower,
-      code,
+      farmerName: name.trim(),
+      phone: "",
+      gps: "",
+      landId: null,
+      landSize: "",
+      landUnit: "acre",
+      cropType: "",
+      soilType: "",
+      irrigation: "",
       status: "active",
       createdAt: FieldValue.serverTimestamp(),
     });

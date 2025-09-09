@@ -65,8 +65,15 @@ export function getOrInitFirebaseApp() {
     }
     if (!filePath) throw new Error("no local JSON found");
     const raw = readFileSync(filePath, "utf8");
-    const serviceAccount = JSON.parse(raw);
-    app = initializeApp({ credential: cert(serviceAccount) });
+    const serviceAccount = JSON.parse(raw) as { project_id: string; client_email: string; private_key: string };
+    const normalizedPrivateKey = serviceAccount.private_key?.replace(/\\n/g, "\n");
+    app = initializeApp({
+      credential: cert({
+        projectId: serviceAccount.project_id,
+        clientEmail: serviceAccount.client_email,
+        privateKey: normalizedPrivateKey,
+      }),
+    });
     adminInitInfo = { source: "json", projectId: serviceAccount.project_id, clientEmail: serviceAccount.client_email, filePath };
     return app;
   } catch {

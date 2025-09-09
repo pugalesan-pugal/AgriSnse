@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLand } from "../contexts/LandContext";
 import { AreaUnit, CropType, Land, unitToSqMeters } from "./types";
 
 const cropOptions: CropType[] = ["Empty", "Paddy", "Banana", "Pepper", "Coconut", "Other"];
@@ -17,13 +18,12 @@ function key(r: number, c: number) {
 }
 
 type Props = {
-  lands: Land[];
   landToEditId: string | null;
-  onUpsert: (entry: Land, editingId?: string | null) => void;
   clearEdit: () => void;
 };
 
-export default function LandManagement({ lands, landToEditId, onUpsert, clearEdit }: Props) {
+export default function LandManagement({ landToEditId, clearEdit }: Props) {
+  const { lands, setLands, refreshLands } = useLand();
   const [draft, setDraft] = useState<Partial<Land>>({ sizeUnit: "acre", crop: "Empty" });
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -46,8 +46,24 @@ export default function LandManagement({ lands, landToEditId, onUpsert, clearEdi
     setGrid({ rows: 10, cols: 10, selected: new Set() });
   }
 
-  function saveDraft() {
+  async function saveDraft() {
     if (!draft.name || !draft.location || !draft.sizeValue || !draft.sizeUnit) return;
+    
+    // Get user code from localStorage
+    let userCode: string | null = null;
+    try {
+      const raw = localStorage.getItem("agrisense.user");
+      if (raw) {
+        const u = JSON.parse(raw);
+        userCode = u?.code ?? null;
+      }
+    } catch {}
+    
+    if (!userCode) {
+      console.error("No user code found");
+      return;
+    }
+
     const entry: Land = {
       id: editingId ?? crypto.randomUUID(),
       name: draft.name,
@@ -59,11 +75,41 @@ export default function LandManagement({ lands, landToEditId, onUpsert, clearEdi
       crop: (draft.crop as CropType) ?? "Empty",
       createdAt: Date.now(),
     };
-    onUpsert(entry, editingId);
-    setEditingId(null);
-    setDraft({ sizeUnit: draft.sizeUnit, crop: draft.crop });
-    setGrid({ rows: 10, cols: 10, selected: new Set() });
-    clearEdit();
+
+    // Save to Firestore via API
+    try {
+      const resp = await fetch("/api/land/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: userCode,
+          land: entry,
+          isUpdate: !!editingId
+        }),
+      });
+      
+      if (!resp.ok) {
+        const data = await resp.json();
+        throw new Error(data.error || "Failed to save land");
+      }
+      
+      // Update lands in context
+      setLands(prev => {
+        if (editingId) {
+          return prev.map(l => l.id === editingId ? entry : l);
+        }
+        return [entry, ...prev];
+      });
+      
+      // Refresh from database
+      await refreshLands();
+      setEditingId(null);
+      setDraft({ sizeUnit: draft.sizeUnit, crop: draft.crop });
+      setGrid({ rows: 10, cols: 10, selected: new Set() });
+      clearEdit();
+    } catch (err) {
+      console.error("Failed to save land:", err);
+    }
   }
 
   function editLand(l: Land) {

@@ -1,16 +1,28 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLand } from "../contexts/LandContext";
+import { Land } from "./types";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; ts: number };
 
 export default function ChatModule() {
+  const { lands, activeLandId, activeLand } = useLand();
   const [messages, setMessages] = useState<Message[]>([
     { id: "m1", role: "assistant", content: "ഹലോ! എങ്ങനെ സഹായിക്കാം? (Hello! How can I help?)", ts: Date.now() },
   ]);
   const [input, setInput] = useState("");
+  const [userCode, setUserCode] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("agrisense.user");
+      const c = raw ? JSON.parse(raw)?.code ?? null : null;
+      setUserCode(c);
+    } catch {}
+  }, []);
 
   async function sendMessage(text: string) {
     if (!text.trim()) return;
@@ -18,16 +30,29 @@ export default function ChatModule() {
     setMessages((m) => [...m, userMsg]);
 
     try {
+      // Get active land context
+      const landContext = activeLand ? {
+        name: activeLand.name,
+        location: activeLand.location,
+        size: `${activeLand.sizeValue} ${activeLand.sizeUnit}`,
+        crop: activeLand.crop,
+        soil: "Unknown", // Will be filled from profile
+        irrigation: "Unknown" // Will be filled from profile
+      } : null;
+
       console.log("[ChatModule] sending to /api/chat-ollama", {
         model: "mistral:latest",
         history: messages.length,
         promptPreview: text.slice(0, 100),
+        landContext
       });
+
       const resp = await fetch("/api/chat-ollama", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "mistral:latest",
+          landContext,
           messages: [
             ...messages.map(({ role, content }) => ({ role, content })),
             { role: "user", content: text },
@@ -46,6 +71,25 @@ export default function ChatModule() {
         ts: Date.now(),
       };
       setMessages((m) => [...m, reply]);
+
+      // Log advisory to selected land if available
+      if (activeLandId && userCode) {
+        try {
+          await fetch("/api/advisory/log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              code: userCode,
+              landId: activeLandId,
+              question: text,
+              answer: content,
+              timestamp: Date.now()
+            }),
+          });
+        } catch (err) {
+          console.error("Failed to log advisory:", err);
+        }
+      }
     } catch (e) {
       console.error("[ChatModule] error", e);
       const errMsg: Message = {
@@ -84,9 +128,49 @@ export default function ChatModule() {
     }
   }
 
+
   return (
     <div className="h-full flex flex-col">
-      <h2 className="text-lg font-semibold mb-3">Conversational Interface</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold">Conversational Interface</h2>
+        {activeLand ? (
+          <div className="px-3 py-1 rounded-full text-sm border border-emerald-300 bg-emerald-50 text-emerald-700">
+            Advisory for: {activeLand.name}
+          </div>
+        ) : (
+          <div className="px-3 py-1 rounded-full text-sm border border-orange-300 bg-orange-50 text-orange-700">
+            Please select a land to get personalized advice
+          </div>
+        )}
+      </div>
+      
+      {!activeLand && (
+        <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="text-sm text-orange-800">
+            <strong>No land selected.</strong> Go to Farmer Profile to select a land for personalized agricultural advice.
+          </div>
+        </div>
+      )}
+      {userCode && (
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs text-neutral-600">Code:</span>
+          <span className="text-xs font-semibold">{userCode}</span>
+        <select
+          className="ml-auto border border-neutral-300 rounded-lg px-2 py-1 text-sm"
+          value={activeLandId || ""}
+          onChange={(e) => {
+            // Land selection is now handled globally
+            console.log("Land selection changed to:", e.target.value);
+          }}
+          title="Context: land for advice"
+        >
+            <option value="">All lands / none</option>
+            {lands.map((l) => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto space-y-3 pr-1">
         {messages.map((m) => (
           <div key={m.id} className={`max-w-[85%] ${m.role === "user" ? "ml-auto" : "mr-auto"}`}>
