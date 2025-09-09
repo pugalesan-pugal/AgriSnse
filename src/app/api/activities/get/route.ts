@@ -27,26 +27,39 @@ export async function GET(request: NextRequest) {
     const farmerDoc = snap.docs[0];
     const farmerId = farmerDoc.id;
 
-    // Build query for activities - order by activityDate if available, otherwise createdAt
-    let query = farmerDoc.ref.collection("activities").orderBy("activityDate", "desc");
-
-    // Add date range filter if provided - filter by activityDate (when the activity actually happened)
-    if (start && end) {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      query = query.where("activityDate", ">=", startDate).where("activityDate", "<=", endDate);
+    // Build preferred query (may need composite index)
+    let activities: any[] = [];
+    try {
+      let query = farmerDoc.ref.collection("activities").orderBy("activityDate", "desc");
+      if (start && end) {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        query = query.where("activityDate", ">=", startDate).where("activityDate", "<=", endDate);
+      }
+      if (landId) {
+        query = query.where("landId", "==", landId);
+      }
+      const activitiesSnap = await query.get();
+      activities = activitiesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) {
+      // Fallback if index is missing: use createdAt ordering with optional landId filter
+      console.warn("[activities/get] preferred query needs index; using fallback", e);
+      let fallback = farmerDoc.ref.collection("activities").orderBy("createdAt", "desc");
+      if (landId) fallback = fallback.where("landId", "==", landId);
+      const snap2 = await fallback.limit(200).get();
+      const all = snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (start && end) {
+        const startMs = new Date(start).getTime();
+        const endMs = new Date(end).getTime();
+        activities = all.filter((a: any) => {
+          const t = (a.activityDate instanceof Date ? a.activityDate.getTime() : a.activityDate) || a.createdAt;
+          const ms = typeof t === "number" ? t : (t?.toMillis?.() ? t.toMillis() : Date.parse(t));
+          return ms >= startMs && ms <= endMs;
+        });
+      } else {
+        activities = all;
+      }
     }
-
-    // Add land filter if provided
-    if (landId) {
-      query = query.where("landId", "==", landId);
-    }
-
-    const activitiesSnap = await query.get();
-    const activities = activitiesSnap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
 
     console.info("[activities/get] retrieved", { 
       code, 
@@ -56,12 +69,7 @@ export async function GET(request: NextRequest) {
       dateRange: start && end ? `${start} to ${end}` : "all"
     });
 
-    return NextResponse.json({ 
-      ok: true, 
-      code, 
-      farmerId, 
-      activities 
-    });
+    return NextResponse.json({ ok: true, code, farmerId, activities });
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : String(err);
     // Firestore composite index hint surfacing

@@ -199,24 +199,28 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
   // Hydration-safe code display comes from userCode state
 
   return (
-    <div className="flex flex-col gap-8 max-w-6xl mx-auto">
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Farmer & Farm Profiling</h2>
         {userCode && (
           <div className="px-3 py-1 rounded-full text-sm border border-neutral-300 bg-neutral-50">Code: <span className="font-semibold">{userCode}</span></div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-8">
+      <div className="max-h-[70vh] md:max-h-[75vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6">
         {/* Farmer Info */}
-        <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 flex flex-col gap-4">
-          <div className="text-sm font-semibold text-neutral-700">Farmer Info</div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-neutral-600">Farmer Name</label>
-            <input disabled={!isEditing} className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.farmerName} onChange={(e) => handleChange("farmerName", e.target.value)} required />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-neutral-600">Phone</label>
-            <input disabled={!isEditing} className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.phone} onChange={(e) => handleChange("phone", e.target.value)} required />
+        <div className="rounded-2xl border border-emerald-200 shadow-sm p-6 flex flex-col gap-4 bg-gradient-to-br from-emerald-50 to-white animate-fade-up hover-lift">
+          <div className="text-sm font-semibold text-emerald-900 flex items-center gap-2"><span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />Farmer Info</div>
+          <div className="h-px w-full bg-emerald-200/70" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-neutral-600">Farmer Name</label>
+              <input disabled={!isEditing} className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.farmerName} onChange={(e) => handleChange("farmerName", e.target.value)} required />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-neutral-600">Phone</label>
+              <input disabled={!isEditing} className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.phone} onChange={(e) => handleChange("phone", e.target.value)} required />
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-sm text-neutral-600">GPS</label>
@@ -228,9 +232,9 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
         </div>
 
          {/* Land Selection */}
-         <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 flex flex-col gap-4">
+         <div className="rounded-2xl border border-emerald-200 shadow-sm p-6 flex flex-col gap-4 bg-gradient-to-br from-emerald-50 to-white animate-fade-up hover-lift">
            <div className="flex items-center justify-between">
-             <div className="text-sm font-semibold text-neutral-700">Active Land</div>
+             <div className="text-sm font-semibold text-emerald-900 flex items-center gap-2"><span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />Active Land</div>
              <div className="flex items-center gap-2">
                {activeLandId && (
                  <div className="px-2 py-1 rounded-md text-xs bg-emerald-100 text-emerald-700">
@@ -276,50 +280,55 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
          </div>
 
         {/* Agronomy */}
-        <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 flex flex-col gap-4">
-          <div className="text-sm font-semibold text-neutral-700">Agronomy</div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-neutral-600">Preferred Language</label>
-            <select disabled={!isEditing} className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.language} onChange={(e) => handleChange("language", e.target.value as "en" | "ml") }>
-              <option value="en">English</option>
-              <option value="ml">Malayalam</option>
-            </select>
+        <div className="rounded-2xl border border-emerald-200 shadow-sm p-6 flex flex-col gap-4 bg-gradient-to-br from-emerald-50 to-white animate-fade-up hover-lift">
+          <div className="text-sm font-semibold text-emerald-900 flex items-center gap-2"><span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />Agronomy</div>
+          <div className="h-px w-full bg-emerald-200/70" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm text-neutral-600">Preferred Language</label>
+              <select disabled={!isEditing} className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.language} onChange={(e) => handleChange("language", e.target.value as "en" | "ml") }>
+                <option value="en">English</option>
+                <option value="ml">Malayalam</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm text-neutral-600">Crop Type</label>
+              <select className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={keralaCrops.includes(form.cropType.toLowerCase()) ? form.cropType.toLowerCase() : ""} onChange={(e) => handleChange("cropType", e.target.value)}>
+                <option value="">— Select a crop —</option>
+                {keralaCrops.map((c) => (<option key={c} value={c}>{c}</option>))}
+              </select>
+              {!showCustomCrop ? (
+                <button type="button" className="self-start text-sm underline text-emerald-700" onClick={() => setShowCustomCrop(true)}>+ Add Crop</button>
+              ) : (
+                <input className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" placeholder="Type custom crop" value={form.cropType} onChange={(e) => handleChange("cropType", e.target.value)} />
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm text-neutral-600">Soil Type</label>
+              <select className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={soilTypes.includes(form.soilType.toLowerCase()) ? form.soilType.toLowerCase() : ""} onChange={(e) => handleChange("soilType", e.target.value)}>
+                <option value="">— Select a soil type —</option>
+                {soilTypes.map((s) => (<option key={s} value={s}>{s}</option>))}
+              </select>
+              {!showCustomSoil ? (
+                <button type="button" className="self-start text-sm underline text-emerald-700" onClick={() => setShowCustomSoil(true)}>+ Add Soil Type</button>
+              ) : (
+                <input className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" placeholder="Type custom soil" value={form.soilType} onChange={(e) => handleChange("soilType", e.target.value)} />
+              )}
+            </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-neutral-600">Crop Type</label>
-            <select className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={keralaCrops.includes(form.cropType.toLowerCase()) ? form.cropType.toLowerCase() : ""} onChange={(e) => handleChange("cropType", e.target.value)}>
-              <option value="">— Select a crop —</option>
-              {keralaCrops.map((c) => (<option key={c} value={c}>{c}</option>))}
-            </select>
-            {!showCustomCrop ? (
-              <button type="button" className="self-start text-sm underline text-emerald-700" onClick={() => setShowCustomCrop(true)}>+ Add Crop</button>
-            ) : (
-              <input className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" placeholder="Type custom crop" value={form.cropType} onChange={(e) => handleChange("cropType", e.target.value)} />
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-neutral-600">Soil Type</label>
-            <select className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={soilTypes.includes(form.soilType.toLowerCase()) ? form.soilType.toLowerCase() : ""} onChange={(e) => handleChange("soilType", e.target.value)}>
-              <option value="">— Select a soil type —</option>
-              {soilTypes.map((s) => (<option key={s} value={s}>{s}</option>))}
-            </select>
-            {!showCustomSoil ? (
-              <button type="button" className="self-start text-sm underline text-emerald-700" onClick={() => setShowCustomSoil(true)}>+ Add Soil Type</button>
-            ) : (
-              <input className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" placeholder="Type custom soil" value={form.soilType} onChange={(e) => handleChange("soilType", e.target.value)} />
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-neutral-600">Irrigation Methods</label>
-            <select className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={irrigationMethods.includes(form.irrigation.toLowerCase()) ? form.irrigation.toLowerCase() : ""} onChange={(e) => handleChange("irrigation", e.target.value)}>
-              <option value="">— Select method —</option>
-              {irrigationMethods.map((m) => (<option key={m} value={m}>{m}</option>))}
-            </select>
-            {!showCustomIrr ? (
-              <button type="button" className="self-start text-sm underline text-emerald-700" onClick={() => setShowCustomIrr(true)}>+ Add Irrigation Method</button>
-            ) : (
-              <input className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" placeholder="Type custom irrigation" value={form.irrigation} onChange={(e) => handleChange("irrigation", e.target.value)} />
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm text-neutral-600">Irrigation Methods</label>
+              <select className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={irrigationMethods.includes(form.irrigation.toLowerCase()) ? form.irrigation.toLowerCase() : ""} onChange={(e) => handleChange("irrigation", e.target.value)}>
+                <option value="">— Select method —</option>
+                {irrigationMethods.map((m) => (<option key={m} value={m}>{m}</option>))}
+              </select>
+              {!showCustomIrr ? (
+                <button type="button" className="self-start text-sm underline text-emerald-700" onClick={() => setShowCustomIrr(true)}>+ Add Irrigation Method</button>
+              ) : (
+                <input className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" placeholder="Type custom irrigation" value={form.irrigation} onChange={(e) => handleChange("irrigation", e.target.value)} />
+              )}
+            </div>
           </div>
         </div>
 
@@ -335,6 +344,7 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
            {message && <span className="text-sm text-neutral-600">{message}</span>}
          </div>
        </form>
+      </div>
 
        {/* Add Land Confirmation Modal */}
        {showAddLandConfirm && (

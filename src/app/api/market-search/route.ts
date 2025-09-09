@@ -105,14 +105,36 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    // Get data for the specific crop
-    const cropData = marketData[crop.toLowerCase() as keyof typeof marketData];
+    // Normalize crop aliases (avoid 404 for common synonyms)
+    const alias = (crop || "").toLowerCase().trim();
+    const cropAliasMap: Record<string, keyof typeof marketData> = {
+      paddy: "rice",
+      rice: "rice",
+      coconut: "coconut",
+      banana: "banana",
+      pepper: "pepper",
+      cardamom: "cardamom",
+      rubber: "rubber",
+      tea: "tea",
+    };
+    const mappedKey = cropAliasMap[alias];
+    const cropData = mappedKey ? marketData[mappedKey] : (marketData[alias as keyof typeof marketData] as any);
     
+    // If unknown crop, return a graceful generic template instead of 404
     if (!cropData) {
-      return NextResponse.json({ 
-        error: "Market data not available for this crop",
-        availableCrops: Object.keys(marketData)
-      }, { status: 404 });
+      const generic = {
+        currentPrice: "N/A",
+        demand: "Unknown",
+        bestMarkets: ["Local APMC"],
+        harvestTime: "Varies",
+        suggestions: [
+          "Check state agri portal for MSP / mandi rates",
+          "Consult nearest cooperative / FPO",
+          "Compare prices across nearby markets",
+        ],
+        cooperatives: ["Kerala State Cooperative Marketing Federation"],
+      };
+      return NextResponse.json({ ok: true, data: { crop, location, ...generic, lastUpdated: new Date().toISOString() } });
     }
 
     // Add location-specific information

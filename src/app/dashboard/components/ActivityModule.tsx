@@ -222,6 +222,7 @@ export default function ActivityModule() {
         </div>
       </div>
 
+      <div className="max-h-[70vh] md:max-h-[75vh] overflow-y-auto pr-1">
       {/* Land-specific calendar header */}
       {activeLand ? (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -268,6 +269,7 @@ export default function ActivityModule() {
           />
         </div>
       )}
+      </div>
     </div>
   );
 }

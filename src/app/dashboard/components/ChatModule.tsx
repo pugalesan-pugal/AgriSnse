@@ -15,6 +15,37 @@ export default function ChatModule() {
   const [userCode, setUserCode] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      synthRef.current = window.speechSynthesis || null;
+    }
+  }, []);
+
+  function isMalayalam(text: string) {
+    return /[\u0D00-\u0D7F]/.test(text);
+  }
+
+  function speak(text: string) {
+    try {
+      const synth = synthRef.current;
+      if (!synth) {
+        alert("Text-to-speech not supported in this browser.");
+        return;
+      }
+      // Cancel any ongoing utterances
+      if (synth.speaking) synth.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = isMalayalam(text) ? "ml-IN" : "en-IN";
+      utter.rate = 1.0;
+      utter.pitch = 1.0;
+      synth.speak(utter);
+    } catch (e) {
+      console.error("speak failed", e);
+    }
+  }
 
   useEffect(() => {
     try {
@@ -119,153 +150,182 @@ export default function ChatModule() {
   }
 
   async function toggleRecord() {
-    if (recording) {
-      mediaRecorderRef.current?.stop();
-      setRecording(false);
+    // Prefer browser Web Speech API (no server needed)
+    // Types are not in lib.dom for all browsers, so use 'any'
+    const SpeechRecognition: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      if (recording) {
+        try { recognitionRef.current?.stop(); } catch {}
+        setRecording(false);
+        return;
+      }
+      try {
+        const rec = new SpeechRecognition();
+        recognitionRef.current = rec;
+        rec.lang = "en-IN"; // default
+        // Try to infer Malayalam from profile later; allow both via 'ml-IN' alternative
+        rec.interimResults = true;
+        rec.continuous = true;
+        let finalText = "";
+        rec.onresult = (event: any) => {
+          let interim = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) finalText += transcript + " ";
+            else interim += transcript;
+          }
+          // Live preview in the input
+          setInput((finalText + interim).trim());
+        };
+        rec.onerror = (e: any) => {
+          console.error("SpeechRecognition error", e);
+          setRecording(false);
+        };
+        rec.onend = () => {
+          setRecording(false);
+          const text = (finalText || input).trim();
+          if (text) sendMessage(text);
+        };
+        rec.start();
+        setRecording(true);
+      } catch (e) {
+        console.error("SpeechRecognition start failed", e);
+        setRecording(false);
+      }
       return;
     }
+    // Fallback: MediaRecorder only (no STT). Inform user.
     try {
+      if (recording) {
+        mediaRecorderRef.current?.stop();
+        setRecording(false);
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
       mediaRecorderRef.current = mr;
-      const chunks: BlobPart[] = [];
-      mr.ondataavailable = (e) => chunks.push(e.data);
       mr.onstop = async () => {
-        const blob = new Blob(chunks, { type: "audio/webm" });
-        // TODO: Send to Google Speech API (Malayalam) and set text
-        console.log("Recorded audio placeholder", blob.size);
+        setRecording(false);
+        alert("Voice recognition not supported in this browser. Please type your question.");
       };
       mr.start();
       setRecording(true);
     } catch (e) {
       console.error(e);
+      setRecording(false);
     }
   }
 
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold">Conversational Interface</h2>
-        {activeLand ? (
-          <div className="px-3 py-1 rounded-full text-sm border border-emerald-300 bg-emerald-50 text-emerald-700">
-            Advisory for: {activeLand.name}
-          </div>
-        ) : (
-          <div className="px-3 py-1 rounded-full text-sm border border-orange-300 bg-orange-50 text-orange-700">
-            Please select a land to get personalized advice
-          </div>
-        )}
-      </div>
-      
-      {!activeLand && (
-        <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-          <div className="text-sm text-orange-800">
-            <strong>No land selected.</strong> Go to Farmer Profile to select a land for personalized agricultural advice.
-          </div>
-        </div>
-      )}
-
-      {activeLand && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="text-sm font-medium text-blue-800 mb-2">Quick Questions:</div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => sendMessage("What fertilizer should I use for my crop?")}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-            >
-              Fertilizer Advice
-            </button>
-            <button
-              onClick={() => sendMessage("How is the weather affecting my crop?")}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-            >
-              Weather Impact
-            </button>
-            <button
-              onClick={() => sendMessage("When should I harvest my crop?")}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-            >
-              Harvest Timing
-            </button>
-            <button
-              onClick={() => sendMessage("Where can I sell my crop?")}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-            >
-              Market Info
-            </button>
-            <button
-              onClick={() => sendMessage("What irrigation schedule should I follow?")}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-            >
-              Irrigation
-            </button>
-            <button
-              onClick={() => sendMessage("How to prevent pests in my crop?")}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-            >
-              Pest Control
-            </button>
-          </div>
-        </div>
-      )}
-      {userCode && (
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs text-neutral-600">Code:</span>
-          <span className="text-xs font-semibold">{userCode}</span>
-        <select
-          className="ml-auto border border-neutral-300 rounded-lg px-2 py-1 text-sm"
-          value={activeLandId || ""}
-          onChange={(e) => {
-            // Land selection is now handled globally
-            console.log("Land selection changed to:", e.target.value);
-          }}
-          title="Context: land for advice"
-        >
-            <option value="">All lands / none</option>
-            {lands.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-        {messages.map((m) => (
-          <div key={m.id} className={`max-w-[85%] ${m.role === "user" ? "ml-auto" : "mr-auto"}`}>
-            <div
-              className={`px-3 py-2 rounded-lg shadow-sm border ${
-                m.role === "user" ? "bg-neutral-900 text-white border-neutral-900" : "bg-white border-neutral-200"
-              }`}
-            >
-              <div className="text-xs text-neutral-500 mb-1">{m.role}</div>
-              <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+    <div className="h-full flex flex-col bg-white">
+      <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col gap-3">
+        <div className="flex items-center justify-between mt-1">
+          <h2 className="text-lg font-semibold">Conversational Interface</h2>
+          {activeLand ? (
+            <div className="px-3 py-1 rounded-full text-sm border border-emerald-300 bg-emerald-50 text-emerald-700">
+              Advisory for: {activeLand.name}
             </div>
+          ) : (
+            <div className="px-3 py-1 rounded-full text-sm border border-orange-300 bg-orange-50 text-orange-700">
+              Please select a land to get personalized advice
+            </div>
+          )}
+        </div>
+
+        {/* Black frame */}
+        <div className="rounded-2xl bg-neutral-900 p-2 shadow-lg animate-fade-up">
+          <div className="rounded-xl bg-white p-3">
+            {/* Quick questions */}
+            {activeLand && (
+              <div className="mb-3">
+                <div className="text-sm font-medium text-neutral-800 mb-2">Quick Questions</div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    ["Fertilizer Advice", "What fertilizer should I use for my crop?"],
+                    ["Weather Impact", "How is the weather affecting my crop?"],
+                    ["Harvest Timing", "When should I harvest my crop?"],
+                    ["Market Info", "Where can I sell my crop?"],
+                    ["Irrigation", "What irrigation schedule should I follow?"],
+                    ["Pest Control", "How to prevent pests in my crop?"],
+                  ].map(([label, q]) => (
+                    <button
+                      key={label}
+                      onClick={() => sendMessage(String(q))}
+                      className="px-3 py-1 text-xs bg-neutral-100 text-neutral-800 rounded-full hover:bg-neutral-200 transition-colors"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Chat scroll area */}
+            <div className="flex items-center gap-2 mb-2">
+              {userCode && (
+                <>
+                  <span className="text-xs text-neutral-600">Code:</span>
+                  <span className="text-xs font-semibold">{userCode}</span>
+                </>
+              )}
+            </div>
+            <div className="h-[52vh] md:h-[58vh] overflow-y-auto space-y-3 pr-1">
+              {messages.map((m) => (
+                <div key={m.id} className={`max-w-[85%] ${m.role === "user" ? "ml-auto" : "mr-auto"}`}>
+                  <div
+                    className={`px-3 py-2 rounded-lg shadow-sm border leading-relaxed ${
+                      m.role === "user"
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-neutral-50 text-neutral-900 border-neutral-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="text-[11px] opacity-70">{m.role}</div>
+                      {m.role === "assistant" && (
+                        <button
+                          type="button"
+                          onClick={() => speak(m.content)}
+                          className="text-[11px] px-2 py-0.5 rounded border border-neutral-300 hover:bg-neutral-100"
+                          title="Play reply"
+                        >
+                          ▶ Play
+                        </button>
+                      )}
+                    </div>
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Input row */}
+            <form
+              className="mt-3 flex items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                sendMessage(input);
+              }}
+            >
+              <button
+                type="button"
+                title="Record Malayalam voice"
+                onClick={toggleRecord}
+                className={`px-3 py-2 rounded-lg border ${recording ? "bg-red-600 text-white border-red-600" : "border-neutral-300 hover:bg-neutral-100"}`}
+              >
+                {recording ? "Stop" : "Voice"}
+              </button>
+              <input
+                className="flex-1 border border-neutral-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neutral-800"
+                placeholder="Type your question..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+              />
+              <button className="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800">Send</button>
+            </form>
           </div>
-        ))}
+        </div>
       </div>
-      <form
-        className="mt-3 flex items-center gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          sendMessage(input);
-        }}
-      >
-        <button
-          type="button"
-          title="Record Malayalam voice"
-          onClick={toggleRecord}
-          className={`px-3 py-2 rounded-lg border ${recording ? "bg-red-600 text-white border-red-600" : "border-neutral-300 hover:bg-neutral-100"}`}
-        >
-          {recording ? "Stop" : "Voice"}
-        </button>
-        <input
-          className="flex-1 border border-neutral-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neutral-800"
-          placeholder="Type your question..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        <button className="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800">Send</button>
-      </form>
     </div>
   );
 }

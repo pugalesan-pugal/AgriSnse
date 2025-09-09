@@ -22,10 +22,12 @@ export async function POST(req: NextRequest) {
     const startedAt = Date.now();
     const body = await req.json();
     const messages: ChatMessage[] = body?.messages ?? [];
-    const model: string = body?.model ?? "mistral"; // e.g., mistral or mistral:7b-instruct
+    const model: string = body?.model ?? "mistral:latest"; // default to a tag you have
     const landContext: LandContext | null = body?.landContext ?? null;
-    // TEST OVERRIDE: hardcode default to local Ollama at 127.0.0.1:1143 as requested
-    const host = process.env.OLLAMA_HOST || "http://127.0.0.1:1143";
+    // Resolve Ollama host with validation; fallback to local default if env is invalid
+    const envHost = process.env.OLLAMA_HOST?.trim();
+    const validHost = envHost && /^https?:\/\/[^\s:]+:\d+$/i.test(envHost) ? envHost : undefined;
+    const host = validHost || "http://127.0.0.1:11434";
     const userCode: string | undefined = body?.userCode;
     const landId: string | undefined = body?.landId;
 
@@ -56,24 +58,38 @@ export async function POST(req: NextRequest) {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             
-            const activitiesQuery = farmerDoc.ref.collection("activities")
-              .where("landId", "==", landId)
-              .where("activityDate", ">=", thirtyDaysAgo)
-              .orderBy("activityDate", "desc")
-              .limit(20);
-            
-            const activitiesSnap = await activitiesQuery.get();
-            const activities = activitiesSnap.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as any[];
+            let activities: any[] = [];
+            try {
+              const activitiesQuery = farmerDoc.ref.collection("activities")
+                .where("landId", "==", landId)
+                .where("activityDate", ">=", thirtyDaysAgo)
+                .orderBy("activityDate", "desc")
+                .limit(20);
+              const activitiesSnap = await activitiesQuery.get();
+              activities = activitiesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+            } catch (qerr) {
+              // Fallback if composite index is missing: try a simpler query
+              console.warn("[chat-ollama] activities query needs index; falling back to simpler query", qerr);
+              try {
+                const simpleSnap = await farmerDoc.ref.collection("activities")
+                  .where("landId", "==", landId)
+                  .orderBy("createdAt", "desc")
+                  .limit(20)
+                  .get();
+                activities = simpleSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+              } catch (qerr2) {
+                console.warn("[chat-ollama] fallback activities query also failed; proceeding without activities", qerr2);
+                activities = [];
+              }
+            }
 
             // Get weather data from OpenWeather API
             let weatherData = null;
-            if (landData?.location && process.env.OPENWEATHER_API_KEY) {
+            const weatherApiKey = process.env.OPENWEATHER_API_KEY || "4372b31eef6b4aafe4a91ecedfd58982";
+            if (landData?.location && weatherApiKey) {
               try {
                 const weatherResponse = await fetch(
-                  `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(landData.location)}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric`
+                  `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(landData.location)}&appid=${weatherApiKey}&units=metric`
                 );
                 if (weatherResponse.ok) {
                   weatherData = await weatherResponse.json();
@@ -232,14 +248,14 @@ Always tailor your response to this specific land and current conditions.`;
       lastUser: messages.filter((m) => m.role === "user").slice(-1)[0]?.content?.slice(0, 120) ?? "",
     });
 
-    // Quick health probe to Ollama to fail fast if server is down
+    // Soft health probe: warn but don't fail fast
     try {
       const health = await fetch(`${host}/api/tags`, { method: "GET", cache: "no-store" });
       if (!health.ok) {
-        return NextResponse.json({ error: `Ollama not reachable at ${host}. Start it with 'ollama serve' and ensure model is pulled (e.g., 'ollama pull mistral').` }, { status: 503 });
+        console.warn(`[chat-ollama] health check not OK at ${host}`);
       }
-    } catch {
-      return NextResponse.json({ error: `Cannot connect to Ollama at ${host}. Start it with 'ollama serve' and ensure firewall allows access.` }, { status: 503 });
+    } catch (e) {
+      console.warn(`[chat-ollama] health check failed at ${host}:`, e);
     }
 
     // Post to Ollama with timeout
@@ -298,6 +314,30 @@ Always tailor your response to this specific land and current conditions.`;
         if (gen.ok) {
           const data = await gen.json();
           const content = data?.response ?? data?.message?.content ?? "";
+
+          // Store chat transcript in Firestore (best-effort)
+          try {
+            if (userCode) {
+              await getOrInitFirebaseApp();
+              const db = getFirestore();
+              const farmersRef = db.collection("farmers");
+              const farmerSnap = await farmersRef.where("code", "==", userCode).limit(1).get();
+              if (!farmerSnap.empty) {
+                const farmerDoc = farmerSnap.docs[0];
+                await farmerDoc.ref.collection("chats").add({
+                  model,
+                  landId: landId || null,
+                  messages: messages,
+                  assistant: content,
+                  createdAt: new Date(),
+                  route: "generate",
+                });
+              }
+            }
+          } catch (e) {
+            console.warn("[chat-ollama] failed to persist chat (generate)", e);
+          }
+
           return NextResponse.json({ message: { role: "assistant", content } });
         }
       } catch (e) {
@@ -312,6 +352,29 @@ Always tailor your response to this specific land and current conditions.`;
     const durationMs = Date.now() - startedAt;
     const preview = data?.message?.content?.slice?.(0, 120) ?? "";
     console.info("[chat-ollama] success", { durationMs, previewLength: preview.length, preview });
+    // Persist chat transcript (best-effort)
+    try {
+      if (userCode) {
+        await getOrInitFirebaseApp();
+        const db = getFirestore();
+        const farmersRef = db.collection("farmers");
+        const farmerSnap = await farmersRef.where("code", "==", userCode).limit(1).get();
+        if (!farmerSnap.empty) {
+          const farmerDoc = farmerSnap.docs[0];
+          await farmerDoc.ref.collection("chats").add({
+            model,
+            landId: landId || null,
+            messages: messages,
+            assistant: data?.message?.content ?? "",
+            createdAt: new Date(),
+            route: "chat",
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("[chat-ollama] failed to persist chat (chat)", e);
+    }
+
     // Ollama chat non-stream returns an object with message { role, content }
     return NextResponse.json({ message: data?.message ?? null });
   } catch (err: unknown) {

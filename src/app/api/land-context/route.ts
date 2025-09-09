@@ -58,8 +58,9 @@ export async function GET(request: NextRequest) {
       try {
         // Extract coordinates from location if available
         // For now, we'll use a placeholder - in production, you'd parse the location
+        const weatherApiKey = process.env.OPENWEATHER_API_KEY || "4372b31eef6b4aafe4a91ecedfd58982";
         const weatherResponse = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(landData.location)}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric`
+          `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(landData.location)}&appid=${weatherApiKey}&units=metric`
         );
         if (weatherResponse.ok) {
           weatherData = await weatherResponse.json();

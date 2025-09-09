@@ -178,6 +178,7 @@ export default function LandManagement({ landToEditId, clearEdit }: Props) {
         </button>
       </div>
 
+      <div className="max-h-[70vh] md:max-h-[75vh] overflow-y-auto pr-1">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-neutral-200 p-4">
           <div className="text-sm font-semibold mb-2">Add / Edit Land</div>
@@ -321,6 +322,7 @@ export default function LandManagement({ landToEditId, clearEdit }: Props) {
             )}
           </div>
         </div>
+      </div>
       </div>
 
       <div className="text-xs text-neutral-500">

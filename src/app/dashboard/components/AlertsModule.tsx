@@ -131,6 +131,7 @@ export default function AlertsModule() {
         <div className="text-xs text-neutral-500">Linked to land: {landContext.name || "(none)"}</div>
       </div>
 
+      <div className="max-h-[70vh] md:max-h-[75vh] overflow-y-auto pr-1">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-sm text-neutral-600">Phone number</label>
@@ -170,6 +171,7 @@ export default function AlertsModule() {
         {loading && (
           <div className="text-sm text-neutral-500">Loading...</div>
         )}
+      </div>
       </div>
     </div>
   );

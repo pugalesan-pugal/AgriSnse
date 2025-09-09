@@ -28,8 +28,9 @@
 
 body {
   background:
-    radial-gradient(1200px 600px at 80% -50%, var(--as-sun) 0%, transparent 60%),
-    linear-gradient(180deg, #f9f6ef 0%, #ffffff 10%, var(--as-sand) 100%);
+    radial-gradient(1100px 520px at 90% -40%, rgba(16,185,129,0.25) 0%, transparent 60%),
+    radial-gradient(900px 420px at -10% 0%, rgba(16,185,129,0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #f0fdf4 0%, #ecfeff 22%, #e8f5ef 100%);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -77,6 +78,22 @@ body {
 
 .animate-float-slow { animation: floatSlow 6s ease-in-out infinite; }
 .animate-fade-up { animation: fadeUp 700ms ease-out both; }
+
+@keyframes slideInRight {
+  0% { opacity: 0; transform: translateX(12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right { animation: slideInRight 400ms ease-out both; }
+
+@keyframes pulseSoft {
+  0% { box-shadow: 0 0 0 rgba(16, 185, 129, 0.0); }
+  50% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.25); }
+  100% { box-shadow: 0 0 0 rgba(16, 185, 129, 0.0); }
+}
+.animate-pulse-soft { animation: pulseSoft 2.2s ease-in-out infinite; }
+
+.hover-lift { transition: transform 300ms ease, box-shadow 300ms ease; }
+.hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15); }
 
 /* Form fields - ensure visible text/caret in all themes */
 .input-field {
