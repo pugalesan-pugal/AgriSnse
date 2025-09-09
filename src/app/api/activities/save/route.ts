@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as Partial<ActivityData>;
     const { code, landId, type, notes, photoUrl, createdAt, activityId } = body;
     
-    if (!code || !type) {
-      return NextResponse.json({ error: "Missing required fields: code, type" }, { status: 400 });
+    if (!code || !type || !landId) {
+      return NextResponse.json({ error: "Missing required fields: code, landId, type" }, { status: 400 });
     }
 
     // Validate activity type
@@ -46,25 +46,30 @@ export async function POST(request: NextRequest) {
     const farmerDoc = snap.docs[0];
     const farmerId = farmerDoc.id;
 
-    // Validate and prepare activity date
+    // Validate and prepare activity date (compare by day, not exact time)
     let activityDate: Date;
     if (createdAt) {
-      activityDate = new Date(createdAt);
-      // Check if the date is valid and not in the future
-      if (isNaN(activityDate.getTime())) {
+      const raw = new Date(createdAt);
+      if (isNaN(raw.getTime())) {
         return NextResponse.json({ error: "Invalid activity date" }, { status: 400 });
       }
-      if (activityDate > new Date()) {
+      // Normalize to start of the selected day (local time)
+      activityDate = new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
+      // End of today (local time)
+      const now = new Date();
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      if (activityDate.getTime() > endOfToday.getTime()) {
         return NextResponse.json({ error: "Activity date cannot be in the future" }, { status: 400 });
       }
     } else {
-      activityDate = new Date();
+      const now = new Date();
+      activityDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }
 
     // Prepare activity data for Firestore
     const activityData = {
       farmerId,
-      landId: landId || "",
+      landId: landId,
       type: type.trim(),
       notes: notes?.trim() || "",
       photoUrl: photoUrl || "",

@@ -53,6 +53,8 @@ export default function ChatModule() {
         body: JSON.stringify({
           model: "mistral:latest",
           landContext,
+          userCode,
+          landId: activeLandId,
           messages: [
             ...messages.map(({ role, content }) => ({ role, content })),
             { role: "user", content: text },
@@ -60,7 +62,19 @@ export default function ChatModule() {
         }),
       });
       console.log("[ChatModule] response status", resp.status);
-      if (!resp.ok) throw new Error("Request failed");
+      if (!resp.ok) {
+        let serverError = "Request failed";
+        try {
+          const errJson = await resp.json();
+          serverError = errJson?.error || serverError;
+        } catch {
+          try {
+            const errText = await resp.text();
+            serverError = errText || serverError;
+          } catch {}
+        }
+        throw new Error(serverError);
+      }
       const data = await resp.json();
       console.log("[ChatModule] response json preview", (data?.message?.content || "").slice(0, 120));
       const content = data?.message?.content || "";
@@ -95,7 +109,7 @@ export default function ChatModule() {
       const errMsg: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "Error connecting to Ollama. Ensure the server is running.",
+        content: e instanceof Error ? e.message : "Error connecting to advisory service.",
         ts: Date.now(),
       };
       setMessages((m) => [...m, errMsg]);
@@ -148,6 +162,50 @@ export default function ChatModule() {
         <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
           <div className="text-sm text-orange-800">
             <strong>No land selected.</strong> Go to Farmer Profile to select a land for personalized agricultural advice.
+          </div>
+        </div>
+      )}
+
+      {activeLand && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="text-sm font-medium text-blue-800 mb-2">Quick Questions:</div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => sendMessage("What fertilizer should I use for my crop?")}
+              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+            >
+              Fertilizer Advice
+            </button>
+            <button
+              onClick={() => sendMessage("How is the weather affecting my crop?")}
+              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+            >
+              Weather Impact
+            </button>
+            <button
+              onClick={() => sendMessage("When should I harvest my crop?")}
+              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+            >
+              Harvest Timing
+            </button>
+            <button
+              onClick={() => sendMessage("Where can I sell my crop?")}
+              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+            >
+              Market Info
+            </button>
+            <button
+              onClick={() => sendMessage("What irrigation schedule should I follow?")}
+              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+            >
+              Irrigation
+            </button>
+            <button
+              onClick={() => sendMessage("How to prevent pests in my crop?")}
+              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+            >
+              Pest Control
+            </button>
           </div>
         </div>
       )}

@@ -13,6 +13,7 @@ type ProfileData = {
   cropType: string;
   soilType: string;
   irrigation: string;
+  language?: "en" | "ml";
 };
 
 export async function POST(request: NextRequest) {
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     const db = getFirestore();
 
     const body = (await request.json()) as Partial<ProfileData>;
-    const { code, farmerName, phone, gps, landId, landSize, landUnit, cropType, soilType, irrigation } = body;
+    const { code, farmerName, phone, gps, landId, landSize, landUnit, cropType, soilType, irrigation, language } = body;
     
     if (!code || !farmerName || !phone) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
       cropType: cropType?.trim() || "",
       soilType: soilType?.trim() || "",
       irrigation: irrigation?.trim() || "",
+      language: language === "ml" ? "ml" : "en",
       updatedAt: FieldValue.serverTimestamp(),
     };
 

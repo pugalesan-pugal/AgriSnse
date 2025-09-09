@@ -20,8 +20,11 @@ export function getOrInitFirebaseApp() {
         try {
           const candidatePaths = [
             process.env.FIREBASE_CREDENTIALS_PATH,
+            process.env.GOOGLE_APPLICATION_CREDENTIALS,
             join(process.cwd(), "agrisense-471508-efdec6b26340.json"),
             join(process.cwd(), "agrisense-fd58c-firebase-adminsdk-fbsvc-c75ce13780.json"),
+            join(process.cwd(), "agrisense-471508-bfdb1ef7ff9c.json"),
+            join(process.cwd(), "firebase-admin.local.json"),
           ].filter(Boolean) as string[];
           let filePath: string | undefined;
           for (const p of candidatePaths) {
@@ -37,6 +40,25 @@ export function getOrInitFirebaseApp() {
       }
     }
     return app;
+  }
+
+  // TEST MODE: Prefer hardcoded JSON at project root if present
+  const hardcodedPath = join(process.cwd(), "agrisense-471508-bfdb1ef7ff9c.json");
+  if (existsSync(hardcodedPath)) {
+    try {
+      const raw = readFileSync(hardcodedPath, "utf8");
+      const serviceAccount = JSON.parse(raw) as { project_id: string; client_email: string; private_key: string };
+      const normalizedPrivateKey = serviceAccount.private_key?.replace(/\\n/g, "\n");
+      app = initializeApp({
+        credential: cert({
+          projectId: serviceAccount.project_id,
+          clientEmail: serviceAccount.client_email,
+          privateKey: normalizedPrivateKey,
+        }),
+      });
+      adminInitInfo = { source: "json", projectId: serviceAccount.project_id, clientEmail: serviceAccount.client_email, filePath: hardcodedPath };
+      return app;
+    } catch {}
   }
 
   // Prefer env vars; fallback to bundled JSON file path if present
@@ -55,8 +77,11 @@ export function getOrInitFirebaseApp() {
   // As a convenience for local dev, attempt to read a JSON in project root if envs are not provided
   const candidatePaths = [
     process.env.FIREBASE_CREDENTIALS_PATH,
+    process.env.GOOGLE_APPLICATION_CREDENTIALS,
     join(process.cwd(), "agrisense-471508-efdec6b26340.json"),
     join(process.cwd(), "agrisense-fd58c-firebase-adminsdk-fbsvc-c75ce13780.json"),
+    join(process.cwd(), "agrisense-471508-bfdb1ef7ff9c.json"),
+    join(process.cwd(), "firebase-admin.local.json"),
   ].filter(Boolean) as string[];
   try {
     let filePath: string | undefined;

@@ -8,10 +8,12 @@ import ChatModule from "./components/ChatModule";
 import ActivityModule from "./components/ActivityModule";
 import LandManagement from "./components/LandManagement";
 import RightPanels from "./components/RightPanels";
+import MarketInsights from "./components/MarketInsights";
 import ActiveLandDisplay from "./components/ActiveLandDisplay";
 import { Land } from "./components/types";
+import AlertsModule from "./components/AlertsModule";
 
-export type ModuleKey = "profiling" | "chat" | "land" | "activities";
+export type ModuleKey = "profiling" | "chat" | "land" | "activities" | "market" | "alerts";
 
 function DashboardContent() {
   const [activeModule, setActiveModule] = useState<ModuleKey>("profiling");
@@ -38,6 +40,10 @@ function DashboardContent() {
         );
       case "activities":
         return <ActivityModule />;
+      case "market":
+        return <MarketInsights />;
+      case "alerts":
+        return <AlertsModule />;
       default:
         return null;
     }

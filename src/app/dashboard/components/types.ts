@@ -45,3 +45,13 @@ export type Land = {
 };
 
 
+export type AlertItem = {
+  id: string;
+  type: "fertilizer" | "government" | "market" | "weather" | "info";
+  title: string;
+  message: string;
+  landId: string | null;
+  createdAt: string;
+};
+
+

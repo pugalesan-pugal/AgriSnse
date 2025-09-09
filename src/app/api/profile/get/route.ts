@@ -24,9 +24,26 @@ export async function GET(request: NextRequest) {
     const farmerDoc = snap.docs[0];
     const farmerId = farmerDoc.id;
 
-    // Get profile data
+    // Get profile data and normalize field names for UI compatibility
     const profileSnap = await farmerDoc.ref.collection("profile").doc("basic").get();
-    const profile = profileSnap.exists ? profileSnap.data() : {};
+    const raw = profileSnap.exists ? (profileSnap.data() as any) : {};
+    const profile = {
+      farmerName: raw.farmerName ?? raw.name ?? "",
+      // Map multiple possible keys to phone
+      phone: raw.phone ?? raw.mobile ?? raw.phoneNumber ?? raw.contact ?? "",
+      // Map multiple possible keys to gps/location
+      gps: raw.gps ?? raw.location ?? raw.gpsCoords ?? raw.coordinates ?? "",
+      landId: raw.landId ?? null,
+      landSize: raw.landSize ?? raw.size ?? "",
+      landUnit: raw.landUnit ?? raw.unit ?? "acre",
+      // Map crop/soil/irrigation variants
+      cropType: raw.cropType ?? raw.crop ?? "",
+      soilType: raw.soilType ?? raw.soil ?? "",
+      irrigation: raw.irrigation ?? raw.irrigationMethod ?? "",
+      language: raw.language === "ml" ? "ml" : "en",
+      // keep original fields too for reference
+      ...raw,
+    };
 
     // Get lands data
     const landsSnap = await farmerDoc.ref.collection("lands").get();

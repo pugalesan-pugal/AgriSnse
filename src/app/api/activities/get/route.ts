@@ -62,9 +62,21 @@ export async function GET(request: NextRequest) {
       farmerId, 
       activities 
     });
-  } catch (err) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : String(err);
+    // Firestore composite index hint surfacing
+    const needsIndex = typeof msg === "string" && msg.includes("The query requires an index");
+    let indexLink: string | undefined = undefined;
+    if (needsIndex) {
+      // Firestore SDK usually includes a console link in the message; try to extract it
+      const match = msg.match(/https:\/\/console\.firebase\.google\.com\S+/);
+      indexLink = match ? match[0] : undefined;
+    }
     console.error("[activities/get] error", msg, err);
-    return NextResponse.json({ error: msg || "Internal error" }, { status: 500 });
+    return NextResponse.json({ 
+      error: msg || "Internal error",
+      requiresIndex: needsIndex || undefined,
+      createIndexUrl: indexLink
+    }, { status: 500 });
   }
 }

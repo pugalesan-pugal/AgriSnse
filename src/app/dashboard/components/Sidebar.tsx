@@ -72,6 +72,26 @@ export default function Sidebar({ active, onSelect, collapsed, onToggle }: Props
           <span className="inline-flex h-2 w-2 rounded-full bg-amber-500" />
           <span className={`${collapsed ? "hidden" : "block"}`}>Activity Tracking</span>
         </button>
+
+        <button
+          className={`${btnBase} ${
+            active === "market" ? "bg-neutral-900 text-white" : "hover:bg-neutral-100"
+          }`}
+          onClick={() => onSelect("market")}
+        >
+          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-600" />
+          <span className={`${collapsed ? "hidden" : "block"}`}>Market Insights</span>
+        </button>
+
+        <button
+          className={`${btnBase} ${
+            active === "alerts" ? "bg-neutral-900 text-white" : "hover:bg-neutral-100"
+          }`}
+          onClick={() => onSelect("alerts")}
+        >
+          <span className="inline-flex h-2 w-2 rounded-full bg-rose-600" />
+          <span className={`${collapsed ? "hidden" : "block"}`}>Reminders & Alerts</span>
+        </button>
       </div>
 
       <div className={`text-xs text-neutral-500 ${collapsed ? "hidden" : "block"}`}>

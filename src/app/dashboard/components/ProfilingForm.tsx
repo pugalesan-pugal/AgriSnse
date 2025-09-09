@@ -14,6 +14,7 @@ type ProfileForm = {
   cropType: string;
   soilType: string;
   irrigation: string;
+  language: "en" | "ml";
 };
 
 type Props = {
@@ -32,9 +33,12 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
     cropType: "",
     soilType: "",
     irrigation: "",
+    language: "en",
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [initialForm, setInitialForm] = useState<ProfileForm | null>(null);
 
   const keralaCrops = useMemo(() => ["paddy", "banana", "pepper", "coconut", "tapioca", "vegetables"], []);
   const soilTypes = useMemo(() => ["laterite", "alluvial", "red loam", "clay"], []);
@@ -84,11 +88,14 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
           cropType: form.cropType,
           soilType: form.soilType,
           irrigation: form.irrigation,
+          language: form.language,
         }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Failed to save");
-      setMessage("Profile saved");
+      setMessage("Profile updated");
+      setIsEditing(false);
+      setInitialForm(form);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to save profile";
       setMessage(msg);
@@ -118,7 +125,21 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
             cropType: p.cropType ?? f.cropType,
             soilType: p.soilType ?? f.soilType,
             irrigation: p.irrigation ?? f.irrigation,
+            language: p.language === "ml" ? "ml" : "en",
           }));
+          setInitialForm({
+            farmerName: p.farmerName ?? "",
+            phone: p.phone ?? "",
+            gps: p.gps ?? "",
+            landId: p.landId ?? null,
+            landSize: p.landSize ?? "",
+            landUnit: p.landUnit ?? "acre",
+            cropType: p.cropType ?? "",
+            soilType: p.soilType ?? "",
+            irrigation: p.irrigation ?? "",
+            language: p.language === "ml" ? "ml" : "en",
+          });
+          setIsEditing(false);
         }
       } catch {}
     })();
@@ -191,17 +212,17 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
           <div className="text-sm font-semibold text-neutral-700">Farmer Info</div>
           <div className="flex flex-col gap-1">
             <label className="text-sm text-neutral-600">Farmer Name</label>
-            <input className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={form.farmerName} onChange={(e) => handleChange("farmerName", e.target.value)} required />
+            <input disabled={!isEditing} className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.farmerName} onChange={(e) => handleChange("farmerName", e.target.value)} required />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm text-neutral-600">Phone</label>
-            <input className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={form.phone} onChange={(e) => handleChange("phone", e.target.value)} required />
+            <input disabled={!isEditing} className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.phone} onChange={(e) => handleChange("phone", e.target.value)} required />
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-sm text-neutral-600">GPS</label>
             <div className="flex gap-2">
-              <input className="min-w-[220px] flex-1 border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={form.gps} onChange={(e) => handleChange("gps", e.target.value)} placeholder="lat, lng" />
-              <button type="button" onClick={captureGPS} className="px-3 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50">Use GPS</button>
+              <input disabled={!isEditing} className="min-w-[220px] flex-1 border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.gps} onChange={(e) => handleChange("gps", e.target.value)} placeholder="lat, lng" />
+              <button type="button" disabled={!isEditing} onClick={captureGPS} className="px-3 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50">Use GPS</button>
             </div>
           </div>
         </div>
@@ -258,6 +279,13 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
         <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 flex flex-col gap-4">
           <div className="text-sm font-semibold text-neutral-700">Agronomy</div>
           <div className="flex flex-col gap-2">
+            <label className="text-sm text-neutral-600">Preferred Language</label>
+            <select disabled={!isEditing} className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:bg-neutral-100" value={form.language} onChange={(e) => handleChange("language", e.target.value as "en" | "ml") }>
+              <option value="en">English</option>
+              <option value="ml">Malayalam</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-2">
             <label className="text-sm text-neutral-600">Crop Type</label>
             <select className="border border-neutral-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" value={keralaCrops.includes(form.cropType.toLowerCase()) ? form.cropType.toLowerCase() : ""} onChange={(e) => handleChange("cropType", e.target.value)}>
               <option value="">— Select a crop —</option>
@@ -296,7 +324,14 @@ export default function ProfilingForm({ onNavigateToLandManagement }: Props) {
         </div>
 
          <div className="flex items-center gap-3">
-           <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-50">{saving ? "Saving..." : "Save Profile"}</button>
+           {!isEditing ? (
+             <button type="button" onClick={() => setIsEditing(true)} className="px-5 py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50">Edit Profile</button>
+           ) : (
+             <>
+               <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-50">{saving ? "Saving..." : "Update Profile"}</button>
+               <button type="button" onClick={() => { if (initialForm) setForm(initialForm); setIsEditing(false); }} className="px-5 py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50">Cancel</button>
+             </>
+           )}
            {message && <span className="text-sm text-neutral-600">{message}</span>}
          </div>
        </form>
