@@ -73,7 +73,7 @@ export default function Sidebar({ active, onSelect, collapsed, onToggle }: Props
 
 
       {/* Navigation Menu */}
-      <div className={`flex-1 py-6 space-y-3 ${collapsed ? "px-2" : "px-4"}`}>
+      <div className={`flex-1 py-6 space-y-3 ${collapsed ? "px-2" : "px-4"} overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800`}>
         {menuItems.map((item, index) => {
           const isActive = active === item.key;
           const colorClasses = {

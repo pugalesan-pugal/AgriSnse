@@ -131,7 +131,7 @@ export default function SchemesModule() {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-white">
+    <div className="h-full w-full flex flex-col bg-gradient-to-br from-slate-50 to-white overflow-hidden">
       {/* Header Section */}
       <div className="flex-shrink-0 p-6 pb-4">
         <div className="flex items-center justify-between mb-6">

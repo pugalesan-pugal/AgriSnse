@@ -187,7 +187,7 @@ export default function AlertsModule() {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-white">
+    <div className="h-full w-full flex flex-col bg-gradient-to-br from-slate-50 to-white overflow-hidden">
       {/* Header Section - Fixed */}
       <div className="flex-shrink-0 p-4 pb-3">
         <div className="flex items-center justify-between mb-3">

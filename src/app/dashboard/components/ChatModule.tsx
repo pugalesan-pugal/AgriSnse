@@ -343,9 +343,9 @@ export default function ChatModule() {
 
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col gap-3">
-        <div className="flex items-center justify-between mt-1">
+    <div className="h-full flex flex-col bg-white overflow-hidden">
+      <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col gap-3 overflow-hidden">
+        <div className="flex items-center justify-between mt-1 flex-shrink-0">
           <h2 className="text-lg font-semibold">Conversational Interface</h2>
           <div className="flex items-center gap-2">
             {activeLand ? (
@@ -434,7 +434,7 @@ export default function ChatModule() {
                 ✕
               </button>
             </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pr-2">
               {chatHistories.length === 0 ? (
                 <p className="text-neutral-500 text-sm">
                   {language === "ml" ? "ഇതുവരെ ചാറ്റ് ചരിത്രം ഇല്ല" : "No chat history yet"}
@@ -483,11 +483,11 @@ export default function ChatModule() {
         )}
 
         {/* Black frame */}
-        <div className="rounded-2xl bg-neutral-900 p-2 shadow-lg animate-fade-up">
-          <div className="rounded-xl bg-white p-3">
+        <div className="rounded-2xl bg-neutral-900 p-2 shadow-lg animate-fade-up flex-1 flex flex-col overflow-hidden">
+          <div className="rounded-xl bg-white p-3 flex-1 flex flex-col overflow-hidden">
             {/* Quick questions */}
             {activeLand && (
-              <div className="mb-3">
+              <div className="mb-3 flex-shrink-0">
                 <div className="text-sm font-medium text-neutral-800 mb-2">
                   {language === "ml" ? "ദ്രുത ചോദ്യങ്ങൾ" : "Quick Questions"}
                 </div>
@@ -563,7 +563,7 @@ export default function ChatModule() {
                 </div>
               )}
             </div>
-            <div className="h-[52vh] md:h-[58vh] overflow-y-auto space-y-3 pr-1">
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
               {messages.map((m) => (
                 <div key={m.id} className={`max-w-[85%] ${m.role === "user" ? "ml-auto" : "mr-auto"}`}>
                   <div
@@ -594,7 +594,7 @@ export default function ChatModule() {
 
             {/* Input row */}
             <form
-              className="mt-3 flex items-center gap-2"
+              className="mt-3 flex items-center gap-2 flex-shrink-0"
               onSubmit={(e) => {
                 e.preventDefault();
                 sendMessage(input);

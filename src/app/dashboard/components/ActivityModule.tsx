@@ -68,10 +68,10 @@ export default function ActivityModule() {
     notes: string;
     photo?: File;
     date: Date;
-  }) => {
+  }): Promise<Activity> => {
     if (!userCode || !activeLandId) {
       alert("Please select a land first");
-      return;
+      throw new Error("No land selected");
     }
     
     try {
@@ -240,7 +240,7 @@ export default function ActivityModule() {
   }, [activeLandId, items.length, filteredLocalActivities.length]);
 
   return (
-    <div className="h-screen w-full flex flex-col bg-gradient-to-br from-slate-50 to-white overflow-hidden">
+    <div className="h-full w-full flex flex-col bg-gradient-to-br from-slate-50 to-white overflow-hidden">
       {/* Header Section */}
       <div className="flex-shrink-0 p-6 pb-4">
         <div className="flex items-center justify-between mb-4">
