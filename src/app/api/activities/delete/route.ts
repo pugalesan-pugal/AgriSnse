@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFirestore } from "firebase-admin/firestore";
-import { initializeFirebaseAdmin } from "@/lib/server/firebaseAdmin";
+import { getOrInitFirebaseApp } from "@/lib/server/firebaseAdmin";
 
 export async function DELETE(req: NextRequest) {
   try {
@@ -14,14 +14,27 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Initialize Firebase Admin
-    const app = await initializeFirebaseAdmin();
-    const db = getFirestore(app);
+    await getOrInitFirebaseApp();
+    const db = getFirestore();
+
+    // Find farmer by code first
+    const farmersRef = db.collection("farmers");
+    const snap = await farmersRef.where("code", "==", code).limit(1).get();
+    if (snap.empty) {
+      return NextResponse.json({ error: "Farmer not found" }, { status: 404 });
+    }
+
+    const farmerDoc = snap.docs[0];
+    const farmerId = farmerDoc.id;
 
     // Delete activity from Firestore
-    await db.collection("farmers").doc(code).collection("activities").doc(activityId).delete();
+    await farmerDoc.ref.collection("activities").doc(activityId).delete();
 
-    console.log(`[activities/delete] Deleted activity ${activityId} for farmer ${code}`);
+    console.info("[activities/delete] deleted", { 
+      code, 
+      farmerId, 
+      activityId 
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

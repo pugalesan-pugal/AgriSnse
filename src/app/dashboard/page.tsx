@@ -12,6 +12,7 @@ import MarketInsights from "./components/MarketInsights";
 import ActiveLandDisplay from "./components/ActiveLandDisplay";
 import { Land } from "./components/types";
 import AlertsModule from "./components/AlertsModule";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export type ModuleKey = "profiling" | "chat" | "land" | "activities" | "market" | "alerts";
 
@@ -57,22 +58,38 @@ function DashboardContent() {
         onSelect={setActiveModule}
         collapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed((v) => !v)}
-        lands={lands}
-        onPickLand={(id) => {
-          setActiveModule("land");
-          setLandToEditId(id);
-        }}
       />
 
-      <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-6 transition-all duration-300 ease-out">
+      <div className={`flex-1 flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-6 transition-all duration-500 ease-out ${
+        isSidebarCollapsed ? "ml-0" : ""
+      }`}>
+        {/* Language Selector */}
+        <div className="absolute top-4 right-4 z-20">
+          <LanguageSelector size="sm" showLabel={true} />
+        </div>
+        
+        {/* Main Content Section */}
         <section
-          className={`${isRightCollapsed ? "w-full md:flex-1" : "w-full md:w-[58%]"} rounded-xl shadow-sm border border-emerald-200 p-4 md:p-6 overflow-y-auto transition-all duration-500 ease-out bg-gradient-to-br from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 animate-fade-up hover-lift`}
+          className={`${
+            isRightCollapsed 
+              ? "w-full md:flex-1" 
+              : "w-full md:flex-1 lg:w-[60%] xl:w-[65%]"
+          } rounded-xl shadow-sm border border-emerald-200 p-0 transition-all duration-500 ease-out bg-gradient-to-br from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 animate-fade-up hover-lift flex flex-col`}
         >
-          <ActiveLandDisplay />
-          {MainContent}
+          <div className="p-4 md:p-6">
+            <ActiveLandDisplay />
+          </div>
+          <div className="flex-1 min-h-0">
+            {MainContent}
+          </div>
         </section>
 
-        <aside className={`${isRightCollapsed ? "md:w-[28px]" : "w-full md:w-[42%]"} relative transition-all duration-500 ease-out`}>
+        {/* Right Panel */}
+        <aside className={`${
+          isRightCollapsed 
+            ? "md:w-[28px]" 
+            : "w-full md:w-[40%] lg:w-[35%] xl:w-[30%]"
+        } relative transition-all duration-500 ease-out`}>
           {/* Toggle handle */}
           <button
             aria-label={isRightCollapsed ? "Expand right panel" : "Collapse right panel"}
@@ -85,7 +102,7 @@ function DashboardContent() {
 
           {!isRightCollapsed && (
             <div className="flex flex-col gap-4 md:gap-6 bg-gradient-to-b from-emerald-800/20 via-emerald-700/10 to-emerald-600/20 rounded-xl p-2 animate-slide-in-right hover-lift">
-              <RightPanels />
+          <RightPanels />
             </div>
           )}
         </aside>

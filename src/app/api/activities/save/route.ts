@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Validate activity type
     const validActivityTypes = [
       "Sowing", "Irrigation", "Fertilizer", "Pesticide", "Pest Issue", 
-      "Harvest", "Spraying", "Pest Check"
+      "Harvest", "Spraying", "Pest Check", "Reminders"
     ];
     
     if (!validActivityTypes.includes(type)) {

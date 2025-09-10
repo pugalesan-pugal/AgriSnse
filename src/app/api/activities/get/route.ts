@@ -27,39 +27,63 @@ export async function GET(request: NextRequest) {
     const farmerDoc = snap.docs[0];
     const farmerId = farmerDoc.id;
 
-    // Build preferred query (may need composite index)
+    // Use simple query that doesn't require composite indexes
     let activities: any[] = [];
-    try {
-      let query = farmerDoc.ref.collection("activities").orderBy("activityDate", "desc");
-      if (start && end) {
-        const startDate = new Date(start);
-        const endDate = new Date(end);
-        query = query.where("activityDate", ">=", startDate).where("activityDate", "<=", endDate);
+    
+    // Get all activities for the farmer (simple query, no complex filters)
+    const activitiesSnap = await farmerDoc.ref
+      .collection("activities")
+      .orderBy("createdAt", "desc")
+      .limit(500) // Reasonable limit to avoid performance issues
+      .get();
+    
+    const allActivities = activitiesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Apply filters in memory (more reliable than complex Firestore queries)
+    activities = allActivities.filter((activity: any) => {
+      // Filter by landId if specified
+      if (landId && activity.landId !== landId) {
+        return false;
       }
-      if (landId) {
-        query = query.where("landId", "==", landId);
-      }
-      const activitiesSnap = await query.get();
-      activities = activitiesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (e) {
-      // Fallback if index is missing: use createdAt ordering with optional landId filter
-      console.warn("[activities/get] preferred query needs index; using fallback", e);
-      let fallback = farmerDoc.ref.collection("activities").orderBy("createdAt", "desc");
-      if (landId) fallback = fallback.where("landId", "==", landId);
-      const snap2 = await fallback.limit(200).get();
-      const all = snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Filter by date range if specified
       if (start && end) {
+        const activityDate = activity.activityDate || activity.createdAt;
+        let activityTime: number;
+        
+        if (activityDate instanceof Date) {
+          activityTime = activityDate.getTime();
+        } else if (activityDate?.seconds) {
+          activityTime = activityDate.seconds * 1000;
+        } else if (typeof activityDate === 'number') {
+          activityTime = activityDate;
+        } else {
+          activityTime = Date.parse(activityDate) || 0;
+        }
+        
         const startMs = new Date(start).getTime();
         const endMs = new Date(end).getTime();
-        activities = all.filter((a: any) => {
-          const t = (a.activityDate instanceof Date ? a.activityDate.getTime() : a.activityDate) || a.createdAt;
-          const ms = typeof t === "number" ? t : (t?.toMillis?.() ? t.toMillis() : Date.parse(t));
-          return ms >= startMs && ms <= endMs;
-        });
-      } else {
-        activities = all;
+        
+        if (activityTime < startMs || activityTime > endMs) {
+          return false;
+        }
       }
-    }
+      
+      return true;
+    });
+    
+    // Sort by activityDate if available, otherwise by createdAt
+    activities.sort((a: any, b: any) => {
+      const getTime = (activity: any) => {
+        const date = activity.activityDate || activity.createdAt;
+        if (date instanceof Date) return date.getTime();
+        if (date?.seconds) return date.seconds * 1000;
+        if (typeof date === 'number') return date;
+        return Date.parse(date) || 0;
+      };
+      
+      return getTime(b) - getTime(a); // Descending order
+    });
 
     console.info("[activities/get] retrieved", { 
       code, 

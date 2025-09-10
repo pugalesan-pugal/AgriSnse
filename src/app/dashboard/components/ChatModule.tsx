@@ -3,14 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useLand } from "../contexts/LandContext";
 import { Land } from "./types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; ts: number };
 
 export default function ChatModule() {
   const { lands, activeLandId, activeLand } = useLand();
-  const [messages, setMessages] = useState<Message[]>([
-    { id: "m1", role: "assistant", content: "ഹലോ! എങ്ങനെ സഹായിക്കാം? (Hello! How can I help?)", ts: Date.now() },
-  ]);
+  const { t, language } = useLanguage();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [userCode, setUserCode] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
@@ -23,6 +23,15 @@ export default function ChatModule() {
       synthRef.current = window.speechSynthesis || null;
     }
   }, []);
+
+  // Set initial welcome message based on language
+  useEffect(() => {
+    const welcomeMessage = language === "ml" 
+      ? "ഹലോ! എങ്ങനെ സഹായിക്കാം? നിങ്ങളുടെ കൃഷി സംബന്ധിച്ച ഏത് ചോദ്യവും ചോദിക്കാം."
+      : "Hello! How can I help you? Feel free to ask any questions about your farming.";
+    
+    setMessages([{ id: "m1", role: "assistant", content: welcomeMessage, ts: Date.now() }]);
+  }, [language]);
 
   function isMalayalam(text: string) {
     return /[\u0D00-\u0D7F]/.test(text);
@@ -67,8 +76,8 @@ export default function ChatModule() {
         location: activeLand.location,
         size: `${activeLand.sizeValue} ${activeLand.sizeUnit}`,
         crop: activeLand.crop,
-        soil: "Unknown", // Will be filled from profile
-        irrigation: "Unknown" // Will be filled from profile
+        soil: language === "ml" ? "അജ്ഞാതം" : "Unknown", // Will be filled from profile
+        irrigation: language === "ml" ? "അജ്ഞാതം" : "Unknown" // Will be filled from profile
       } : null;
 
       console.log("[ChatModule] sending to /api/chat-ollama", {
@@ -85,6 +94,7 @@ export default function ChatModule() {
           model: "mistral:latest",
           landContext,
           userCode,
+          language,
           landId: activeLandId,
           messages: [
             ...messages.map(({ role, content }) => ({ role, content })),
@@ -265,7 +275,7 @@ export default function ChatModule() {
             <div className="flex items-center gap-2 mb-2">
               {userCode && (
                 <>
-                  <span className="text-xs text-neutral-600">Code:</span>
+                  <span className="text-xs text-neutral-600">{language === "ml" ? "കോഡ്:" : "Code:"}</span>
                   <span className="text-xs font-semibold">{userCode}</span>
                 </>
               )}
@@ -317,11 +327,11 @@ export default function ChatModule() {
               </button>
               <input
                 className="flex-1 border border-neutral-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neutral-800"
-                placeholder="Type your question..."
+                placeholder={t("typeMessage")}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
               />
-              <button className="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800">Send</button>
+              <button className="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800">{t("send")}</button>
             </form>
           </div>
         </div>

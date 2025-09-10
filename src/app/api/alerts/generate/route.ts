@@ -8,12 +8,13 @@ type GenerateBody = {
   crop: string;
   location: string;
   state: string;
+  language?: "en" | "ml";
 };
 
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as GenerateBody;
-    const { landId, crop, location, state } = body;
+    const { landId, crop, location, state, language = "en" } = body;
 
     const alerts: Array<{ id: string; type: string; title: string; message: string; landId: string | null; createdAt: string }> = [];
 
@@ -25,8 +26,11 @@ export async function POST(req: NextRequest) {
         const weatherData = await weatherResp.json();
         const tomorrow = weatherData?.weather?.forecast?.daily?.[1];
         const desc = tomorrow?.description || "Check tomorrow's forecast";
-        const wMsg = `Tomorrow's weather in ${location || state}: ${desc}. Temp: ${tomorrow?.temperature ?? "-"}°C. Plan irrigation and field work accordingly.`;
-        alerts.push({ id: `weather-${Date.now()}`, type: "weather", title: "Weather alert for tomorrow", message: wMsg, landId, createdAt: new Date().toISOString() });
+        const wMsg = language === "ml" 
+          ? `നാളെയുടെ കാലാവസ്ഥ ${location || state}: ${desc}. താപനില: ${tomorrow?.temperature ?? "-"}°C. ജലസേചനവും ഫീൽഡ് വർക്കും അതനുസരിച്ച് ആസൂത്രണം ചെയ്യുക.`
+          : `Tomorrow's weather in ${location || state}: ${desc}. Temp: ${tomorrow?.temperature ?? "-"}°C. Plan irrigation and field work accordingly.`;
+        const wTitle = language === "ml" ? "നാളെയുടെ കാലാവസ്ഥാ അലേർട്ട്" : "Weather alert for tomorrow";
+        alerts.push({ id: `weather-${Date.now()}`, type: "weather", title: wTitle, message: wMsg, landId, createdAt: new Date().toISOString() });
       }
     } catch {}
 
@@ -39,17 +43,28 @@ export async function POST(req: NextRequest) {
         const market = await marketResp.json();
         const first = market?.records?.[0];
         if (first) {
-          const snippet = `${first.commodity} at ${first.market}: modal ₹${first.modal_price}`;
-          alerts.push({ id: `market-${Date.now()}`, type: "market", title: "Market insight", message: snippet, landId, createdAt: new Date().toISOString() });
+          const snippet = language === "ml"
+            ? `${first.commodity} ${first.market}ൽ: മോഡൽ ₹${first.modal_price}`
+            : `${first.commodity} at ${first.market}: modal ₹${first.modal_price}`;
+          const mTitle = language === "ml" ? "മാർക്കറ്റ് ഇൻസൈറ്റ്" : "Market insight";
+          alerts.push({ id: `market-${Date.now()}`, type: "market", title: mTitle, message: snippet, landId, createdAt: new Date().toISOString() });
         }
       }
     } catch {}
 
     // Government update (placeholder)
-    alerts.push({ id: `gov-${Date.now()}`, type: "government", title: "Govt. update", message: "Subsidy registration closes on 30th. Apply on the Agri portal.", landId, createdAt: new Date().toISOString() });
+    const govMsg = language === "ml"
+      ? "സബ്സിഡി രജിസ്ട്രേഷൻ 30ന് അവസാനിക്കുന്നു. അഗ്രി പോർട്ടലിൽ അപേക്ഷിക്കുക."
+      : "Subsidy registration closes on 30th. Apply on the Agri portal.";
+    const govTitle = language === "ml" ? "സർക്കാർ അപ്ഡേറ്റ്" : "Govt. update";
+    alerts.push({ id: `gov-${Date.now()}`, type: "government", title: govTitle, message: govMsg, landId, createdAt: new Date().toISOString() });
 
     // Fertilizer schedule (example)
-    alerts.push({ id: `fert-${Date.now()}`, type: "fertilizer", title: "Fertilizer schedule", message: "Fertilizer application due in 2 days based on your crop calendar.", landId, createdAt: new Date().toISOString() });
+    const fertMsg = language === "ml"
+      ? "നിങ്ങളുടെ വിള കലണ്ടറിന് അനുസരിച്ച് 2 ദിവസത്തിനുള്ളിൽ വളം പ്രയോഗിക്കേണ്ടതാണ്."
+      : "Fertilizer application due in 2 days based on your crop calendar.";
+    const fertTitle = language === "ml" ? "വള ഷെഡ്യൂൾ" : "Fertilizer schedule";
+    alerts.push({ id: `fert-${Date.now()}`, type: "fertilizer", title: fertTitle, message: fertMsg, landId, createdAt: new Date().toISOString() });
 
     // Use Ollama to enrich messages
     try {

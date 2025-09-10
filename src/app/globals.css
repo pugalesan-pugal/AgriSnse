@@ -76,8 +76,14 @@ body {
   100% { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 .animate-float-slow { animation: floatSlow 6s ease-in-out infinite; }
 .animate-fade-up { animation: fadeUp 700ms ease-out both; }
+.animate-fade-in { animation: fadeIn 400ms ease-out both; }
 
 @keyframes slideInRight {
   0% { opacity: 0; transform: translateX(12px); }
@@ -102,3 +108,35 @@ body {
   caret-color: #14532d; /* emerald-900 */
 }
 .input-field::placeholder { color: #6b7280; /* gray-500 */ opacity: 1; }
+
+/* Custom Scrollbar Styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Line clamp utility */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

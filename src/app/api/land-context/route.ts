@@ -36,21 +36,41 @@ export async function GET(request: NextRequest) {
     const profileDoc = await farmerDoc.ref.collection("profile").doc("basic").get();
     const profileData = profileDoc.exists ? profileDoc.data() : {};
 
-    // Get recent activities for this land (last 30 days)
+    // Get recent activities for this land (last 30 days) - simple query approach
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const activitiesQuery = farmerDoc.ref.collection("activities")
-      .where("landId", "==", landId)
-      .where("createdAt", ">=", thirtyDaysAgo)
+    // Get all activities and filter in memory (no complex indexes required)
+    const activitiesSnap = await farmerDoc.ref
+      .collection("activities")
       .orderBy("createdAt", "desc")
-      .limit(20);
+      .limit(100) // Get more to filter in memory
+      .get();
     
-    const activitiesSnap = await activitiesQuery.get();
-    const activities = activitiesSnap.docs.map(doc => ({
+    const allActivities = activitiesSnap.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+    
+    // Filter by landId and date range in memory
+    const activities = allActivities.filter((activity: any) => {
+      if (activity.landId !== landId) return false;
+      
+      const activityDate = activity.activityDate || activity.createdAt;
+      let activityTime: number;
+      
+      if (activityDate instanceof Date) {
+        activityTime = activityDate.getTime();
+      } else if (activityDate?.seconds) {
+        activityTime = activityDate.seconds * 1000;
+      } else if (typeof activityDate === 'number') {
+        activityTime = activityDate;
+      } else {
+        activityTime = Date.parse(activityDate) || 0;
+      }
+      
+      return activityTime >= thirtyDaysAgo.getTime();
+    }).slice(0, 20); // Limit to 20 most recent
 
     // Get weather data (we'll call OpenWeather API)
     let weatherData = null;

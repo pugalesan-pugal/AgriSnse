@@ -17,6 +17,8 @@ type LandContext = {
   irrigation: string;
 };
 
+type Language = "en" | "ml";
+
 export async function POST(req: NextRequest) {
   try {
     const startedAt = Date.now();
@@ -24,6 +26,7 @@ export async function POST(req: NextRequest) {
     const messages: ChatMessage[] = body?.messages ?? [];
     const model: string = body?.model ?? "mistral:latest"; // default to a tag you have
     const landContext: LandContext | null = body?.landContext ?? null;
+    const language: Language = body?.language ?? "en";
     // Resolve Ollama host with validation; fallback to local default if env is invalid
     const envHost = process.env.OLLAMA_HOST?.trim();
     const validHost = envHost && /^https?:\/\/[^\s:]+:\d+$/i.test(envHost) ? envHost : undefined;
@@ -58,29 +61,53 @@ export async function POST(req: NextRequest) {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             
+            // Get recent activities for the land (simple query, no complex indexes)
             let activities: any[] = [];
             try {
-              const activitiesQuery = farmerDoc.ref.collection("activities")
-                .where("landId", "==", landId)
-                .where("activityDate", ">=", thirtyDaysAgo)
-                .orderBy("activityDate", "desc")
-                .limit(20);
-              const activitiesSnap = await activitiesQuery.get();
-              activities = activitiesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+              const activitiesSnap = await farmerDoc.ref
+                .collection("activities")
+                .orderBy("createdAt", "desc")
+                .limit(100) // Get more activities to filter in memory
+                .get();
+              
+              const allActivities = activitiesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+              
+              // Filter by landId and date range in memory
+              activities = allActivities.filter((activity: any) => {
+                if (activity.landId !== landId) return false;
+                
+                const activityDate = activity.activityDate || activity.createdAt;
+                let activityTime: number;
+                
+                if (activityDate instanceof Date) {
+                  activityTime = activityDate.getTime();
+                } else if (activityDate?.seconds) {
+                  activityTime = activityDate.seconds * 1000;
+                } else if (typeof activityDate === 'number') {
+                  activityTime = activityDate;
+                } else {
+                  activityTime = Date.parse(activityDate) || 0;
+                }
+                
+                return activityTime >= thirtyDaysAgo.getTime();
+              });
+              
+              // Sort by activity date and limit to 20
+              activities.sort((a: any, b: any) => {
+                const getTime = (activity: any) => {
+                  const date = activity.activityDate || activity.createdAt;
+                  if (date instanceof Date) return date.getTime();
+                  if (date?.seconds) return date.seconds * 1000;
+                  if (typeof date === 'number') return date;
+                  return Date.parse(date) || 0;
+                };
+                return getTime(b) - getTime(a);
+              });
+              
+              activities = activities.slice(0, 20); // Limit to 20 most recent
             } catch (qerr) {
-              // Fallback if composite index is missing: try a simpler query
-              console.warn("[chat-ollama] activities query needs index; falling back to simpler query", qerr);
-              try {
-                const simpleSnap = await farmerDoc.ref.collection("activities")
-                  .where("landId", "==", landId)
-                  .orderBy("createdAt", "desc")
-                  .limit(20)
-                  .get();
-                activities = simpleSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-              } catch (qerr2) {
-                console.warn("[chat-ollama] fallback activities query also failed; proceeding without activities", qerr2);
-                activities = [];
-              }
+              console.warn("[chat-ollama] activities query failed; proceeding without activities", qerr);
+              activities = [];
             }
 
             // Get weather data from OpenWeather API

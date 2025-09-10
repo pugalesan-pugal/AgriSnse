@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Land } from "./types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type ActivityLog = {
   id: string;
@@ -61,6 +62,7 @@ export default function Calendar({
   onUpdateActivity,
   onDeleteActivity
 }: CalendarProps) {
+  const { t, language } = useLanguage();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>("month");
   const [activities, setActivities] = useState<ActivityLog[]>([]);
@@ -186,11 +188,72 @@ export default function Calendar({
   const getActivitiesForDate = (date: Date) => {
     const dateStr = date.toDateString();
     
+    
     // Get database activities for the selected land only
     const dbActivities = activities.filter(activity => {
-      // Use activityDate if available, otherwise fall back to createdAt
-      const activityDate = activity.activityDate ? new Date(activity.activityDate) : new Date(activity.createdAt);
-      return activityDate.toDateString() === dateStr && activity.landId === activeLandId;
+      // Parse activity date with improved handling
+      let activityDate: Date;
+      
+      try {
+        if (activity.activityDate) {
+          if ((activity.activityDate as any) instanceof Date) {
+            activityDate = activity.activityDate as unknown as Date;
+          } else if (typeof activity.activityDate === 'object' && activity.activityDate !== null) {
+            // Firebase Timestamp object
+            const timestamp = activity.activityDate as any;
+            if (timestamp.seconds) {
+              activityDate = new Date(timestamp.seconds * 1000);
+            } else if (timestamp._seconds) {
+              activityDate = new Date(timestamp._seconds * 1000);
+            } else {
+              activityDate = new Date(activity.activityDate as any);
+            }
+          } else if (typeof activity.activityDate === 'string') {
+            activityDate = new Date(activity.activityDate);
+          } else if (typeof activity.activityDate === 'number') {
+            activityDate = new Date(activity.activityDate);
+          } else {
+            activityDate = new Date(activity.activityDate as any);
+          }
+        } else if (activity.createdAt) {
+          if ((activity.createdAt as any) instanceof Date) {
+            activityDate = activity.createdAt as unknown as Date;
+          } else if (typeof activity.createdAt === 'object' && activity.createdAt !== null) {
+            // Firebase Timestamp object
+            const timestamp = activity.createdAt as any;
+            if (timestamp.seconds) {
+              activityDate = new Date(timestamp.seconds * 1000);
+            } else if (timestamp._seconds) {
+              activityDate = new Date(timestamp._seconds * 1000);
+            } else {
+              activityDate = new Date(activity.createdAt as any);
+            }
+          } else if (typeof activity.createdAt === 'string') {
+            activityDate = new Date(activity.createdAt);
+          } else if (typeof activity.createdAt === 'number') {
+            activityDate = new Date(activity.createdAt);
+          } else {
+            activityDate = new Date(activity.createdAt as any);
+          }
+        } else {
+          return false;
+        }
+        
+        // Validate the parsed date
+        if (isNaN(activityDate.getTime())) {
+          console.warn(`[Calendar] Invalid date for activity ${activity.id}:`, activity.activityDate || activity.createdAt);
+          return false;
+        }
+      } catch (error) {
+        console.error(`[Calendar] Error parsing date for activity ${activity.id}:`, error);
+        return false;
+      }
+      
+      const matchesDate = activityDate.toDateString() === dateStr;
+      const matchesLand = activity.landId === activeLandId;
+      
+      
+      return matchesDate && matchesLand;
     });
     
     // Get local activities (recently added) for the selected land only
@@ -318,6 +381,9 @@ export default function Calendar({
       "Pesticide": "bg-purple-100 text-purple-800",
       "Pest Issue": "bg-red-100 text-red-800",
       "Harvest": "bg-orange-100 text-orange-800",
+      "Spraying": "bg-purple-100 text-purple-800",
+      "Pest Check": "bg-red-100 text-red-800",
+      "Reminders": "bg-indigo-100 text-indigo-800 border border-indigo-200",
     };
     return colors[type] || "bg-gray-100 text-gray-800";
   };
@@ -326,7 +392,7 @@ export default function Calendar({
   const calendarDays = getCalendarDays();
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 motion-safe:transition-all motion-safe:duration-300">
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex items-center gap-2">
@@ -387,7 +453,7 @@ export default function Calendar({
       </div>
 
       {/* Calendar Grid */}
-      <div className={`bg-white rounded-lg border border-gray-200 overflow-hidden transition-opacity duration-300 ${
+      <div className={`bg-white rounded-lg border border-gray-200 overflow-hidden motion-safe:transition-opacity duration-300 ${
         isTransitioning ? "opacity-50" : "opacity-100"
       }`}>
         {view === "month" && (
@@ -410,7 +476,7 @@ export default function Calendar({
                 return (
                   <div
                     key={index}
-                    className={`min-h-[100px] border-r border-b border-gray-200 p-2 relative group ${
+                    className={`min-h-[100px] border-r border-b border-gray-200 p-2 relative group motion-safe:transition-colors ${
                       isCurrentMonth ? "bg-white" : "bg-gray-50"
                     } ${isToday ? "bg-blue-50" : ""} hover:bg-gray-50 cursor-pointer`}
                     onClick={() => setSelectedDate(date)}
@@ -428,7 +494,7 @@ export default function Calendar({
                           e.stopPropagation();
                           handleAddActivity(date);
                         }}
-                        className="absolute top-1 right-1 w-6 h-6 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center text-sm hover:bg-blue-600"
+                        className="absolute top-1 right-1 w-6 h-6 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center text-sm hover:bg-blue-600 active:scale-95"
                         title="Add activity"
                       >
                         +
@@ -439,7 +505,7 @@ export default function Calendar({
                       {dayActivities.slice(0, 2).map(activity => (
                         <div
                           key={activity.id}
-                          className={`text-xs px-2 py-1 rounded ${getActivityColor(activity.type)} truncate cursor-pointer hover:opacity-80`}
+                          className={`text-xs px-2 py-1 rounded ${getActivityColor(activity.type)} truncate cursor-pointer hover:opacity-80 motion-safe:transition-opacity`}
                           title={`${activity.type}: ${activity.notes || ""}`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -528,58 +594,171 @@ export default function Calendar({
 
       {/* Selected Date Details */}
       {selectedDate && (
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium">
-              Activities for {selectedDate.toLocaleDateString()}
-            </h3>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Activities for {selectedDate.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                {getActivitiesForDate(selectedDate).length} activity{getActivitiesForDate(selectedDate).length !== 1 ? 'ies' : ''} recorded
+              </p>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => handleAddActivity(selectedDate)}
-                className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+                className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
               >
-                + Add Activity
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Activity
               </button>
               <button
                 onClick={() => setSelectedDate(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Close"
               >
-                ×
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           </div>
-          <div className="space-y-2">
-            {getActivitiesForDate(selectedDate).map(activity => (
-              <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <span className={`px-2 py-1 rounded text-xs ${getActivityColor(activity.type)}`}>
-                    {activity.type}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    {lands?.find(l => l.id === activity.landId)?.name || "Current Land"}
-                  </span>
-                  {activity.notes && (
-                    <span className="text-sm text-gray-500">{activity.notes}</span>
-                  )}
+          
+          <div className="space-y-3">
+            {getActivitiesForDate(selectedDate).map(activity => {
+              // Improved date parsing for Firebase timestamps
+              let activityDate: Date;
+              try {
+                if (activity.activityDate) {
+                  if (typeof activity.activityDate === 'object' && activity.activityDate !== null) {
+                    // Firebase Timestamp object
+                    const timestamp = activity.activityDate as any;
+                    if (timestamp.seconds) {
+                      activityDate = new Date(timestamp.seconds * 1000);
+                    } else if (timestamp._seconds) {
+                      activityDate = new Date(timestamp._seconds * 1000);
+                    } else {
+                      activityDate = new Date(activity.activityDate as any);
+                    }
+                  } else if (typeof activity.activityDate === 'number') {
+                    activityDate = new Date(activity.activityDate);
+                  } else {
+                    activityDate = new Date(activity.activityDate);
+                  }
+                } else if (activity.createdAt) {
+                  if (typeof activity.createdAt === 'object' && activity.createdAt !== null) {
+                    // Firebase Timestamp object
+                    const timestamp = activity.createdAt as any;
+                    if (timestamp.seconds) {
+                      activityDate = new Date(timestamp.seconds * 1000);
+                    } else if (timestamp._seconds) {
+                      activityDate = new Date(timestamp._seconds * 1000);
+                    } else {
+                      activityDate = new Date(activity.createdAt as any);
+                    }
+                  } else if (typeof activity.createdAt === 'number') {
+                    activityDate = new Date(activity.createdAt);
+                  } else {
+                    activityDate = new Date(activity.createdAt);
+                  }
+                } else {
+                  activityDate = new Date(); // fallback to current date
+                }
+                
+                // Validate the date
+                if (isNaN(activityDate.getTime())) {
+                  activityDate = new Date(); // fallback to current date
+                }
+              } catch (error) {
+                console.error('Date parsing error:', error);
+                activityDate = new Date(); // fallback to current date
+              }
+              
+              return (
+                <div key={activity.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-gradient-to-r from-gray-50 to-white">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getActivityColor(activity.type)}`}>
+                          {activity.type}
+                        </span>
+                        <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          {lands?.find(l => l.id === activity.landId)?.name || "Current Land"}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {activityDate.toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                      </div>
+                      
+                      {activity.notes && (
+                        <div className="mb-3">
+                          <p className="text-sm text-gray-700 leading-relaxed">{activity.notes}</p>
+                        </div>
+                      )}
+                      
+                      {activity.photoUrl && (
+                        <div className="mb-3">
+                          <img 
+                            src={activity.photoUrl} 
+                            alt="Activity photo" 
+                            className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span>ID: {activity.id.slice(0, 8)}...</span>
+                        <span>Created: {activityDate.toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 ml-4">
+                      <button 
+                        onClick={() => handleEditActivity(activity)}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors flex items-center gap-1"
+                        title="Edit activity"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteActivity(activity.id)}
+                        className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors flex items-center gap-1"
+                        title="Delete activity"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleEditActivity(activity)}
-                    className="text-blue-600 hover:text-blue-800 text-sm"
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteActivity(activity.id)}
-                    className="text-red-600 hover:text-red-800 text-sm"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
+            
             {getActivitiesForDate(selectedDate).length === 0 && (
-              <p className="text-gray-500 text-sm">No activities for this date</p>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <p className="text-gray-500 text-sm mb-2">No activities recorded for this date</p>
+                <p className="text-gray-400 text-xs">Click "Add Activity" to log farming activities</p>
+              </div>
             )}
           </div>
         </div>
@@ -587,7 +766,7 @@ export default function Calendar({
 
       {loading && (
         <div className="text-center py-4 text-gray-500">
-          Loading activities...
+          {t("loading")}...
         </div>
       )}
 
@@ -597,7 +776,7 @@ export default function Calendar({
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">
-                {editingActivity ? "Edit Activity" : "Add Activity"}
+                {editingActivity ? t("edit") + " " + t("addActivity") : t("addActivity")}
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -622,7 +801,7 @@ export default function Calendar({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Activity Type *
+                  {t("activityType")} *
                 </label>
                 <select
                   value={formData.type}
@@ -638,12 +817,13 @@ export default function Calendar({
                   <option value="Harvest">Harvest</option>
                   <option value="Spraying">Spraying</option>
                   <option value="Pest Check">Pest Check</option>
+                  <option value="Reminders">Reminders</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
+                  {t("description")}
                 </label>
                 <textarea
                   value={formData.notes}
@@ -656,7 +836,7 @@ export default function Calendar({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Photo (Optional)
+                  {language === "ml" ? "ഫോട്ടോ (ഓപ്ഷണൽ)" : "Photo (Optional)"}
                 </label>
                 <input
                   type="file"
@@ -678,7 +858,7 @@ export default function Calendar({
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
               </div>
             </div>
