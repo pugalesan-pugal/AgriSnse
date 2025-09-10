@@ -5,6 +5,7 @@ export const en = {
   landManagement: "Land Management",
   activityTracking: "Activity Tracking",
   marketInsights: "Market Insights",
+  governmentSchemes: "Government Schemes",
   remindersAlerts: "Reminders & Alerts",
   chat: "Chat",
   logout: "Logout",

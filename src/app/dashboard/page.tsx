@@ -12,9 +12,10 @@ import MarketInsights from "./components/MarketInsights";
 import ActiveLandDisplay from "./components/ActiveLandDisplay";
 import { Land } from "./components/types";
 import AlertsModule from "./components/AlertsModule";
+import SchemesModule from "./components/SchemesModule";
 import LanguageSelector from "@/components/LanguageSelector";
 
-export type ModuleKey = "profiling" | "chat" | "land" | "activities" | "market" | "alerts";
+export type ModuleKey = "profiling" | "chat" | "land" | "activities" | "market" | "alerts" | "schemes";
 
 function DashboardContent() {
   const [activeModule, setActiveModule] = useState<ModuleKey>("profiling");
@@ -46,6 +47,8 @@ function DashboardContent() {
         return <MarketInsights />;
       case "alerts":
         return <AlertsModule />;
+      case "schemes":
+        return <SchemesModule />;
       default:
         return null;
     }

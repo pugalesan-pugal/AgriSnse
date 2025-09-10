@@ -16,6 +16,7 @@ const menuItems = [
   { key: "land" as ModuleKey, icon: "🌾", color: "lime", label: "landManagement" },
   { key: "activities" as ModuleKey, icon: "📅", color: "amber", label: "activityTracking" },
   { key: "market" as ModuleKey, icon: "📈", color: "emerald", label: "marketInsights" },
+  { key: "schemes" as ModuleKey, icon: "🏛️", color: "blue", label: "governmentSchemes" },
   { key: "alerts" as ModuleKey, icon: "🔔", color: "rose", label: "remindersAlerts" },
 ];
 
@@ -80,6 +81,7 @@ export default function Sidebar({ active, onSelect, collapsed, onToggle }: Props
             sky: "bg-sky-500 text-sky-100", 
             lime: "bg-lime-500 text-lime-100",
             emerald: "bg-emerald-500 text-emerald-100",
+            blue: "bg-blue-500 text-blue-100",
             rose: "bg-rose-500 text-rose-100"
           };
           

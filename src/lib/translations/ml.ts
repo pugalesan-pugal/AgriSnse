@@ -5,6 +5,7 @@ export const ml = {
   landManagement: "ഭൂമി മാനേജ്മെന്റ്",
   activityTracking: "പ്രവർത്തന ട്രാക്കിംഗ്",
   marketInsights: "മാർക്കറ്റ് ഇൻസൈറ്റ്സ്",
+  governmentSchemes: "സർക്കാർ പദ്ധതികൾ",
   remindersAlerts: "ഓർമ്മപ്പെടുത്തലുകളും അലേർട്ടുകളും",
   chat: "ചാറ്റ്",
   logout: "ലോഗൗട്ട്",

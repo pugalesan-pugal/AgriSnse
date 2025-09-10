@@ -86,23 +86,23 @@ async function fetchFromDataSource(source: typeof DATA_SOURCES[0], state: string
 }
 
 async function fetchFromDataGov(source: typeof DATA_SOURCES[0], state: string, commodity: string, limit: number) {
-  const params = new URLSearchParams({
+    const params = new URLSearchParams({
     "api-key": source.apiKey,
-    format: "json",
-    limit: limit.toString(),
-  });
+      format: "json",
+      limit: limit.toString(),
+    });
 
   // Try different field name variations
-  if (state) {
-    params.append("filters[state]", state);
-    params.append("filters[State]", state);
-    params.append("filters[STATE]", state);
-  }
-  if (commodity) {
-    params.append("filters[commodity]", commodity);
-    params.append("filters[Commodity]", commodity);
-    params.append("filters[COMMODITY]", commodity);
-  }
+    if (state) {
+      params.append("filters[state]", state);
+      params.append("filters[State]", state);
+      params.append("filters[STATE]", state);
+    }
+    if (commodity) {
+      params.append("filters[commodity]", commodity);
+      params.append("filters[Commodity]", commodity);
+      params.append("filters[COMMODITY]", commodity);
+    }
 
   const url = `${source.baseUrl}?${params.toString()}`;
   
@@ -114,54 +114,54 @@ async function fetchFromDataGov(source: typeof DATA_SOURCES[0], state: string, c
     }
   });
   
-  if (!resp.ok) {
+    if (!resp.ok) {
     throw new Error(`data.gov.in API error: ${resp.status} ${resp.statusText}`);
-  }
-  
-  const data = await resp.json();
+    }
+    
+    const data = await resp.json();
 
   // Check if API returned an error
   if (data.status === "error" || data.message === "Meta not found") {
     throw new Error(`data.gov.in API error: ${data.message || 'Meta not found'}`);
   }
 
-  let records = [];
-  
-  // Try different possible data structures
-  if (data?.records && Array.isArray(data.records)) {
-    records = data.records.map((r: any) => ({
-      state: r.state || r.State || '',
-      district: r.district || r.District || '',
-      market: r.market || r.Market || '',
-      commodity: r.commodity || r.Commodity || '',
-      variety: r.variety || r.Variety || '',
-      arrival_date: r.arrival_date || r.Arrival_Date || r.arrivalDate || new Date().toISOString().split('T')[0],
-      min_price: Number(r.min_price || r.Min_Price || r.minPrice || 0),
-      max_price: Number(r.max_price || r.Max_Price || r.maxPrice || 0),
-      modal_price: Number(r.modal_price || r.Modal_Price || r.modalPrice || 0),
-    }));
-  } else if (data?.data && Array.isArray(data.data)) {
-    records = data.data.map((r: any) => ({
-      state: r.state || r.State || '',
-      district: r.district || r.District || '',
-      market: r.market || r.Market || '',
-      commodity: r.commodity || r.Commodity || '',
-      variety: r.variety || r.Variety || '',
-      arrival_date: r.arrival_date || r.Arrival_Date || r.arrivalDate || new Date().toISOString().split('T')[0],
-      min_price: Number(r.min_price || r.Min_Price || r.minPrice || 0),
-      max_price: Number(r.max_price || r.Max_Price || r.maxPrice || 0),
-      modal_price: Number(r.modal_price || r.Modal_Price || r.modalPrice || 0),
-    }));
-  }
-
-  // If no data with filters, try without filters
-  if (records.length === 0 && (state || commodity)) {
-    const noFilterParams = new URLSearchParams({
-      "api-key": source.apiKey,
-      format: "json",
-      limit: limit.toString(),
-    });
+    let records = [];
     
+    // Try different possible data structures
+    if (data?.records && Array.isArray(data.records)) {
+      records = data.records.map((r: any) => ({
+        state: r.state || r.State || '',
+        district: r.district || r.District || '',
+        market: r.market || r.Market || '',
+        commodity: r.commodity || r.Commodity || '',
+        variety: r.variety || r.Variety || '',
+        arrival_date: r.arrival_date || r.Arrival_Date || r.arrivalDate || new Date().toISOString().split('T')[0],
+        min_price: Number(r.min_price || r.Min_Price || r.minPrice || 0),
+        max_price: Number(r.max_price || r.Max_Price || r.maxPrice || 0),
+        modal_price: Number(r.modal_price || r.Modal_Price || r.modalPrice || 0),
+      }));
+    } else if (data?.data && Array.isArray(data.data)) {
+      records = data.data.map((r: any) => ({
+        state: r.state || r.State || '',
+        district: r.district || r.District || '',
+        market: r.market || r.Market || '',
+        commodity: r.commodity || r.Commodity || '',
+        variety: r.variety || r.Variety || '',
+        arrival_date: r.arrival_date || r.Arrival_Date || r.arrivalDate || new Date().toISOString().split('T')[0],
+        min_price: Number(r.min_price || r.Min_Price || r.minPrice || 0),
+        max_price: Number(r.max_price || r.Max_Price || r.maxPrice || 0),
+        modal_price: Number(r.modal_price || r.Modal_Price || r.modalPrice || 0),
+      }));
+    }
+
+    // If no data with filters, try without filters
+    if (records.length === 0 && (state || commodity)) {
+      const noFilterParams = new URLSearchParams({
+      "api-key": source.apiKey,
+        format: "json",
+        limit: limit.toString(),
+      });
+      
     const noFilterUrl = `${source.baseUrl}?${noFilterParams.toString()}`;
     
     try {
@@ -172,35 +172,35 @@ async function fetchFromDataGov(source: typeof DATA_SOURCES[0], state: string, c
           'Accept': 'application/json'
         }
       });
-      if (noFilterResp.ok) {
-        const noFilterData = await noFilterResp.json();
-        
-        if (noFilterData?.records && Array.isArray(noFilterData.records)) {
-          records = noFilterData.records
-            .filter((r: any) => {
-              const recordState = (r.state || r.State || '').toLowerCase();
-              const recordCommodity = (r.commodity || r.Commodity || '').toLowerCase();
-              return (!state || recordState.includes(state.toLowerCase())) &&
-                     (!commodity || recordCommodity.includes(commodity.toLowerCase()));
-            })
-            .slice(0, limit)
-            .map((r: any) => ({
-              state: r.state || r.State || '',
-              district: r.district || r.District || '',
-              market: r.market || r.Market || '',
-              commodity: r.commodity || r.Commodity || '',
-              variety: r.variety || r.Variety || '',
-              arrival_date: r.arrival_date || r.Arrival_Date || r.arrivalDate || new Date().toISOString().split('T')[0],
-              min_price: Number(r.min_price || r.Min_Price || r.minPrice || 0),
-              max_price: Number(r.max_price || r.Max_Price || r.maxPrice || 0),
-              modal_price: Number(r.modal_price || r.Modal_Price || r.modalPrice || 0),
-            }));
+        if (noFilterResp.ok) {
+          const noFilterData = await noFilterResp.json();
+          
+          if (noFilterData?.records && Array.isArray(noFilterData.records)) {
+            records = noFilterData.records
+              .filter((r: any) => {
+                const recordState = (r.state || r.State || '').toLowerCase();
+                const recordCommodity = (r.commodity || r.Commodity || '').toLowerCase();
+                return (!state || recordState.includes(state.toLowerCase())) &&
+                       (!commodity || recordCommodity.includes(commodity.toLowerCase()));
+              })
+              .slice(0, limit)
+              .map((r: any) => ({
+                state: r.state || r.State || '',
+                district: r.district || r.District || '',
+                market: r.market || r.Market || '',
+                commodity: r.commodity || r.Commodity || '',
+                variety: r.variety || r.Variety || '',
+                arrival_date: r.arrival_date || r.Arrival_Date || r.arrivalDate || new Date().toISOString().split('T')[0],
+                min_price: Number(r.min_price || r.Min_Price || r.minPrice || 0),
+                max_price: Number(r.max_price || r.Max_Price || r.maxPrice || 0),
+                modal_price: Number(r.modal_price || r.Modal_Price || r.modalPrice || 0),
+              }));
+          }
         }
+      } catch (noFilterError) {
+        // Silently handle no filter request failure
       }
-    } catch (noFilterError) {
-      // Silently handle no filter request failure
     }
-  }
 
   return { records };
 }
@@ -472,157 +472,157 @@ function getMarketCondition(commodity: string, date: Date): number {
 }
 
 function generateSampleData(state: string, commodity: string, limit: number) {
-  const today = new Date().toISOString().split('T')[0];
-  const commodityLower = commodity.toLowerCase();
-  
-  let sampleRecords = [];
-  
-  if (commodityLower.includes('rice') || commodityLower.includes('paddy')) {
-    sampleRecords = [
-      {
-        state: state,
-        district: "Thiruvananthapuram",
-        market: "Thiruvananthapuram Market",
-        commodity: commodity,
-        variety: "Basmati",
-        arrival_date: today,
-        min_price: 45,
-        max_price: 55,
-        modal_price: 50,
-      },
-      {
-        state: state,
-        district: "Kochi",
-        market: "Kochi Market",
-        commodity: commodity,
-        variety: "Jasmine",
-        arrival_date: today,
-        min_price: 42,
-        max_price: 48,
-        modal_price: 45,
-      },
-      {
-        state: state,
-        district: "Kozhikode",
-        market: "Kozhikode Market",
-        commodity: commodity,
-        variety: "Ponni",
-        arrival_date: today,
-        min_price: 38,
-        max_price: 44,
-        modal_price: 41,
+      const today = new Date().toISOString().split('T')[0];
+      const commodityLower = commodity.toLowerCase();
+      
+      let sampleRecords = [];
+      
+      if (commodityLower.includes('rice') || commodityLower.includes('paddy')) {
+        sampleRecords = [
+          {
+            state: state,
+            district: "Thiruvananthapuram",
+            market: "Thiruvananthapuram Market",
+            commodity: commodity,
+            variety: "Basmati",
+            arrival_date: today,
+            min_price: 45,
+            max_price: 55,
+            modal_price: 50,
+          },
+          {
+            state: state,
+            district: "Kochi",
+            market: "Kochi Market",
+            commodity: commodity,
+            variety: "Jasmine",
+            arrival_date: today,
+            min_price: 42,
+            max_price: 48,
+            modal_price: 45,
+          },
+          {
+            state: state,
+            district: "Kozhikode",
+            market: "Kozhikode Market",
+            commodity: commodity,
+            variety: "Ponni",
+            arrival_date: today,
+            min_price: 38,
+            max_price: 44,
+            modal_price: 41,
+          }
+        ];
+      } else if (commodityLower.includes('banana')) {
+        sampleRecords = [
+          {
+            state: state,
+            district: "Thiruvananthapuram",
+            market: "Thiruvananthapuram Market",
+            commodity: commodity,
+            variety: "Nendran",
+            arrival_date: today,
+            min_price: 25,
+            max_price: 35,
+            modal_price: 30,
+          },
+          {
+            state: state,
+            district: "Kochi",
+            market: "Kochi Market",
+            commodity: commodity,
+            variety: "Robusta",
+            arrival_date: today,
+            min_price: 20,
+            max_price: 28,
+            modal_price: 24,
+          },
+          {
+            state: state,
+            district: "Kozhikode",
+            market: "Kozhikode Market",
+            commodity: commodity,
+            variety: "Poovan",
+            arrival_date: today,
+            min_price: 18,
+            max_price: 25,
+            modal_price: 22,
+          }
+        ];
+      } else if (commodityLower.includes('coconut')) {
+        sampleRecords = [
+          {
+            state: state,
+            district: "Thiruvananthapuram",
+            market: "Thiruvananthapuram Market",
+            commodity: commodity,
+            variety: "Tall",
+            arrival_date: today,
+            min_price: 8,
+            max_price: 12,
+            modal_price: 10,
+          },
+          {
+            state: state,
+            district: "Kochi",
+            market: "Kochi Market",
+            commodity: commodity,
+            variety: "Dwarf",
+            arrival_date: today,
+            min_price: 6,
+            max_price: 10,
+            modal_price: 8,
+          },
+          {
+            state: state,
+            district: "Kozhikode",
+            market: "Kozhikode Market",
+            commodity: commodity,
+            variety: "Hybrid",
+            arrival_date: today,
+            min_price: 7,
+            max_price: 11,
+            modal_price: 9,
+          }
+        ];
+      } else {
+        // Generic sample data
+        sampleRecords = [
+          {
+            state: state,
+            district: "Thiruvananthapuram",
+            market: "Thiruvananthapuram Market",
+            commodity: commodity,
+            variety: "Premium",
+            arrival_date: today,
+            min_price: 30,
+            max_price: 40,
+            modal_price: 35,
+          },
+          {
+            state: state,
+            district: "Kochi",
+            market: "Kochi Market",
+            commodity: commodity,
+            variety: "Standard",
+            arrival_date: today,
+            min_price: 25,
+            max_price: 35,
+            modal_price: 30,
+          },
+          {
+            state: state,
+            district: "Kozhikode",
+            market: "Kozhikode Market",
+            commodity: commodity,
+            variety: "Regular",
+            arrival_date: today,
+            min_price: 20,
+            max_price: 30,
+            modal_price: 25,
+          }
+        ];
       }
-    ];
-  } else if (commodityLower.includes('banana')) {
-    sampleRecords = [
-      {
-        state: state,
-        district: "Thiruvananthapuram",
-        market: "Thiruvananthapuram Market",
-        commodity: commodity,
-        variety: "Nendran",
-        arrival_date: today,
-        min_price: 25,
-        max_price: 35,
-        modal_price: 30,
-      },
-      {
-        state: state,
-        district: "Kochi",
-        market: "Kochi Market",
-        commodity: commodity,
-        variety: "Robusta",
-        arrival_date: today,
-        min_price: 20,
-        max_price: 28,
-        modal_price: 24,
-      },
-      {
-        state: state,
-        district: "Kozhikode",
-        market: "Kozhikode Market",
-        commodity: commodity,
-        variety: "Poovan",
-        arrival_date: today,
-        min_price: 18,
-        max_price: 25,
-        modal_price: 22,
-      }
-    ];
-  } else if (commodityLower.includes('coconut')) {
-    sampleRecords = [
-      {
-        state: state,
-        district: "Thiruvananthapuram",
-        market: "Thiruvananthapuram Market",
-        commodity: commodity,
-        variety: "Tall",
-        arrival_date: today,
-        min_price: 8,
-        max_price: 12,
-        modal_price: 10,
-      },
-      {
-        state: state,
-        district: "Kochi",
-        market: "Kochi Market",
-        commodity: commodity,
-        variety: "Dwarf",
-        arrival_date: today,
-        min_price: 6,
-        max_price: 10,
-        modal_price: 8,
-      },
-      {
-        state: state,
-        district: "Kozhikode",
-        market: "Kozhikode Market",
-        commodity: commodity,
-        variety: "Hybrid",
-        arrival_date: today,
-        min_price: 7,
-        max_price: 11,
-        modal_price: 9,
-      }
-    ];
-  } else {
-    // Generic sample data
-    sampleRecords = [
-      {
-        state: state,
-        district: "Thiruvananthapuram",
-        market: "Thiruvananthapuram Market",
-        commodity: commodity,
-        variety: "Premium",
-        arrival_date: today,
-        min_price: 30,
-        max_price: 40,
-        modal_price: 35,
-      },
-      {
-        state: state,
-        district: "Kochi",
-        market: "Kochi Market",
-        commodity: commodity,
-        variety: "Standard",
-        arrival_date: today,
-        min_price: 25,
-        max_price: 35,
-        modal_price: 30,
-      },
-      {
-        state: state,
-        district: "Kozhikode",
-        market: "Kozhikode Market",
-        commodity: commodity,
-        variety: "Regular",
-        arrival_date: today,
-        min_price: 20,
-        max_price: 30,
-        modal_price: 25,
-      }
-    ];
-  }
-  
+      
   return sampleRecords.slice(0, limit);
 }

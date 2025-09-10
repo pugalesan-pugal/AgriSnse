@@ -59,7 +59,7 @@ export default function RightPanels() {
   const [kgLoading, setKgLoading] = useState<boolean>(false);
   const [kgError, setKgError] = useState<string | null>(null);
   const [userCode, setUserCode] = useState<string | null>(null);
-  
+
   // Alerts and reminders state
   const [alerts, setAlerts] = useState<Array<{
     id: string;
@@ -71,6 +71,7 @@ export default function RightPanels() {
   }>>([]);
   const [alertsLoading, setAlertsLoading] = useState<boolean>(false);
   const [alertsError, setAlertsError] = useState<string | null>(null);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
@@ -147,7 +148,7 @@ export default function RightPanels() {
 
   // Fetch dynamic alerts and reminders via Ollama
   useEffect(() => {
-    if (!userCode || !activeLandId) {
+    if (!activeLandId) {
       setAlerts([]);
       return;
     }
@@ -155,116 +156,107 @@ export default function RightPanels() {
       setAlertsLoading(true);
       setAlertsError(null);
       try {
-        const resp = await fetch("/api/chat-ollama", {
+        console.log("Sending alerts request:", { userCode, landId: activeLandId, language });
+        const resp = await fetch("/api/alerts/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userCode,
             landId: activeLandId,
             language,
-            messages: [
-              {
-                role: "user",
-                content: `Generate 3-4 personalized farming reminders and alerts for the current land. Consider:
-- Crop calendar and seasonal activities
-- Weather conditions and forecasts
-- Market opportunities and price alerts
-- Government schemes and deadlines
-- Soil health and fertilizer schedules
-- Pest and disease prevention
-
-Format each alert as: [TYPE] TITLE: MESSAGE (PRIORITY: high/medium/low, DUE: date if applicable)
-Types: fertilizer, weather, market, government, health, maintenance
-Keep messages concise and actionable. Base on real farming needs for ${language === "ml" ? "Kerala" : "Kerala"} context.`,
-              },
-            ],
-            model: "mistral",
           }),
         });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || "Failed to generate alerts");
-        const content: string = data?.message?.content || "";
+        let data;
+        try {
+          data = await resp.json();
+        } catch (jsonError) {
+          console.error("Failed to parse JSON response:", jsonError);
+          const text = await resp.text();
+          console.error("Response text:", text);
+          throw new Error("Invalid response format from alerts API");
+        }
+        if (!resp.ok) {
+          console.error("Alerts API error:", data);
+          throw new Error(data.error || "Failed to generate alerts");
+        }
         
-        // Parse the generated alerts
-        const alertLines = content
-          .split(/\n+/)
-          .map((s: string) => s.trim())
-          .filter(Boolean)
-          .filter(line => line.includes('[') && line.includes(']'));
-        
-        const parsedAlerts = alertLines.slice(0, 4).map((line, index) => {
-          // Extract type, title, message, priority, and due date
-          const typeMatch = line.match(/\[([^\]]+)\]/);
-          const priorityMatch = line.match(/PRIORITY:\s*(high|medium|low)/i);
-          const dueMatch = line.match(/DUE:\s*([^)]+)/i);
-          
-          const type = typeMatch ? typeMatch[1].toLowerCase() : 'info';
-          const priority = priorityMatch ? priorityMatch[1].toLowerCase() as 'high' | 'medium' | 'low' : 'medium';
-          const dueDate = dueMatch ? dueMatch[1].trim() : undefined;
-          
-          // Extract title and message
-          const colonIndex = line.indexOf(':');
-          if (colonIndex === -1) {
-            return {
-              id: `alert-${Date.now()}-${index}`,
-              type,
-              title: line.replace(/\[([^\]]+)\]\s*/, '').trim(),
-              message: '',
-              priority,
-              dueDate
-            };
-          }
-          
-          const title = line.substring(0, colonIndex).replace(/\[([^\]]+)\]\s*/, '').trim();
-          const message = line.substring(colonIndex + 1).replace(/PRIORITY:\s*(high|medium|low)/i, '').replace(/DUE:\s*[^)]+/i, '').trim();
-          
-          return {
-            id: `alert-${Date.now()}-${index}`,
-            type,
-            title,
-            message,
-            priority,
-            dueDate
-          };
-        });
-        
-        setAlerts(parsedAlerts);
+        setAlerts(data.alerts || []);
+        setLastRefreshTime(new Date());
       } catch (e) {
         setAlertsError(e instanceof Error ? e.message : String(e));
-        // Fallback to basic alerts if Ollama fails
-        setAlerts([
-          {
-            id: 'fallback-1',
-            type: 'fertilizer',
-            title: language === 'ml' ? 'വള പ്രയോഗം' : 'Fertilizer Application',
-            message: language === 'ml' ? '2 ദിവസത്തിനുള്ളിൽ വളം പ്രയോഗിക്കേണ്ടതാണ്' : 'Due in 2 days',
-            priority: 'high',
-            dueDate: '2 days'
-          },
-          {
-            id: 'fallback-2',
-            type: 'market',
-            title: language === 'ml' ? 'മാർക്കറ്റ് വില അപ്ഡേറ്റ്' : 'Market Price Update',
-            message: language === 'ml' ? 'പാഡി MSP ട്രെൻഡുകൾ ലഭ്യമാണ്' : 'Paddy MSP trends available',
-            priority: 'medium'
-          }
-        ]);
+        // No fallback - always use Ollama for alerts
+        setAlerts([]);
       } finally {
         setAlertsLoading(false);
       }
     })();
-  }, [userCode, activeLandId, language]);
+  }, [activeLandId, language]);
 
   return (
     <div className="flex flex-col gap-6">
       {/* Reminders & Alerts Panel */}
       <Panel title="Reminders & Alerts" icon="🔔" color="rose">
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-rose-700">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {language === "ml" ? "AI സൃഷ്ടിച്ച അലേർട്ടുകൾ" : "AI-Generated Alerts"}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium text-rose-700">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {language === "ml" ? "AI സൃഷ്ടിച്ച അലേർട്ടുകൾ" : "AI-Generated Alerts"}
+              {lastRefreshTime && (
+                <span className="text-xs text-rose-500 ml-2">
+                  ({language === "ml" ? "അവസാനം പുതുക്കിയത്:" : "Last updated:"} {lastRefreshTime.toLocaleTimeString()})
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                if (!activeLandId) return;
+                setAlertsLoading(true);
+                setAlertsError(null);
+                (async () => {
+                  try {
+                    console.log("Sending refresh alerts request:", { userCode, landId: activeLandId, language });
+                    const resp = await fetch("/api/alerts/generate", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        userCode,
+                        landId: activeLandId,
+                        language,
+                      }),
+                    });
+                    let data;
+                    try {
+                      data = await resp.json();
+                    } catch (jsonError) {
+                      console.error("Failed to parse JSON response:", jsonError);
+                      const text = await resp.text();
+                      console.error("Response text:", text);
+                      throw new Error("Invalid response format from alerts API");
+                    }
+                    if (!resp.ok) {
+                      console.error("Refresh alerts API error:", data);
+                      throw new Error(data.error || "Failed to generate alerts");
+                    }
+                    
+                    setAlerts(data.alerts || []);
+                    setLastRefreshTime(new Date());
+                  } catch (e) {
+                    setAlertsError(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setAlertsLoading(false);
+                  }
+                })();
+              }}
+              disabled={alertsLoading}
+              className="p-2 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={language === "ml" ? "അലേർട്ടുകൾ പുതുക്കുക" : "Refresh alerts"}
+            >
+              <svg className={`w-4 h-4 ${alertsLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
           </div>
           
           {alertsLoading && (
@@ -273,7 +265,7 @@ Keep messages concise and actionable. Base on real farming needs for ${language 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               <span className="text-sm text-rose-700">{language === "ml" ? "അലേർട്ടുകൾ സൃഷ്ടിക്കുന്നു..." : "Generating alerts..."}</span>
-            </div>
+                </div>
           )}
           
           {alertsError && (
@@ -282,7 +274,7 @@ Keep messages concise and actionable. Base on real farming needs for ${language 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-sm text-red-700">{alertsError}</span>
-            </div>
+              </div>
           )}
           
           {!alertsLoading && !alertsError && alerts.length === 0 && (
@@ -290,7 +282,9 @@ Keep messages concise and actionable. Base on real farming needs for ${language 
               <svg className="w-8 h-8 text-rose-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-sm text-rose-600">{language === "ml" ? "ഇതുവരെ അലേർട്ടുകൾ ഇല്ല" : "No alerts yet"}</span>
+              <span className="text-sm text-rose-600">
+                {language === "ml" ? "AI അലേർട്ടുകൾ ലഭിക്കാൻ റിഫ്രഷ് ബട്ടൺ ക്ലിക്ക് ചെയ്യുക" : "Click refresh button to get AI alerts"}
+              </span>
             </div>
           )}
           
@@ -313,6 +307,12 @@ Keep messages concise and actionable. Base on real farming needs for ${language 
                   case 'government': return '🏛️';
                   case 'health': return '🏥';
                   case 'maintenance': return '🔧';
+                  case 'irrigation': return '💧';
+                  case 'harvest': return '🌾';
+                  case 'pest': return '🐛';
+                  case 'equipment': return '⚙️';
+                  case 'soil': return '🌍';
+                  case 'water': return '💦';
                   default: return 'ℹ️';
                 }
               };
@@ -323,12 +323,12 @@ Keep messages concise and actionable. Base on real farming needs for ${language 
                   className="group p-4 rounded-xl bg-white/60 border border-rose-200 hover:bg-white/80 transition-all duration-200 hover:scale-[1.02]"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3">
                     <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${getPriorityColor(alert.priority)} mt-2 ${alert.priority === 'high' ? 'animate-pulse' : ''}`} />
                       <span className="text-lg">{getTypeIcon(alert.type)}</span>
                     </div>
-                    <div className="flex-1">
+                <div className="flex-1">
                       <div className="text-sm font-medium text-rose-900">{alert.title}</div>
                       <div className="text-xs text-rose-600 mt-1">{alert.message}</div>
                       {alert.dueDate && (
@@ -336,11 +336,11 @@ Keep messages concise and actionable. Base on real farming needs for ${language 
                           {language === "ml" ? "കാലാവധി:" : "Due:"} {alert.dueDate}
                         </div>
                       )}
-                    </div>
+                </div>
                     <div className="text-xs text-rose-500 font-medium capitalize">
                       {alert.priority} {language === "ml" ? "പ്രാധാന്യം" : "Priority"}
-                    </div>
-                  </div>
+              </div>
+            </div>
                 </div>
               );
             })}
@@ -378,10 +378,10 @@ Keep messages concise and actionable. Base on real farming needs for ${language 
           {/* AI Tips Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium text-purple-700">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
+            <div className="flex items-center gap-2 text-sm font-medium text-purple-700">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
                 {language === "ml" ? "AI സൃഷ്ടിച്ച ഇൻസൈറ്റുകൾ" : "AI-Powered Insights"}
               </div>
               <button

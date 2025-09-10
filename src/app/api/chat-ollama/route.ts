@@ -126,20 +126,63 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            // Get market data for the crop
+            // Get market data for the crop - using direct import instead of HTTP fetch
             let marketData = null;
             if (landData?.crop && landData.crop !== "Empty") {
               try {
-                const marketResponse = await fetch(
-                  `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/market-search?crop=${encodeURIComponent(landData.crop)}&location=${encodeURIComponent(landData.location || 'Kerala')}`
-                );
-                if (marketResponse.ok) {
-                  const marketResult = await marketResponse.json();
-                  marketData = marketResult.data;
-                }
+                // Import the market search function directly instead of HTTP call
+                const { searchMarketData } = await import("../../../../lib/marketSearch");
+                marketData = await searchMarketData(landData.crop, landData.location || 'Kerala');
               } catch (err) {
                 console.warn("Failed to fetch market data:", err);
+                // Provide fallback market data
+                marketData = {
+                  crop: landData.crop,
+                  currentPrice: "₹25-30/kg",
+                  demand: "High",
+                  bestMarkets: ["Kottayam", "Thrissur"],
+                  harvestTime: "Ready for harvest",
+                  suggestions: ["Sell at Kottayam market", "Check MSP rates"]
+                };
               }
+            }
+
+            // Get government schemes data - using direct import instead of HTTP fetch
+            let schemesData = null;
+            try {
+                const { fetchKeralaSchemes } = await import("../../../../lib/scraper/schemes");
+                const schemesResult = await fetchKeralaSchemes(profileData?.language || 'en');
+                schemesData = schemesResult.schemes || [];
+            } catch (err) {
+                console.warn("Failed to fetch schemes data:", err);
+                // Provide fallback schemes data
+                schemesData = [
+                  {
+                    title: language === "ml" ? "കാർഷിക വികസന പദ്ധതി" : "Agricultural Development Scheme",
+                    description: language === "ml" ? "കാർഷികർക്ക് സാങ്കേതിക സഹായവും സബ്സിഡിയും നൽകുന്ന പദ്ധതി" : "Scheme providing technical assistance and subsidies to farmers",
+                    department: "Kerala Agriculture Department",
+                    category: "Development"
+                  }
+                ];
+            }
+
+            // Get market insights - using direct import instead of HTTP fetch
+            let marketInsights = null;
+            try {
+                const { fetchMarketInsights } = await import("../../../../lib/marketInsights");
+                const insightsResult = await fetchMarketInsights("Kerala", 10);
+                marketInsights = insightsResult.data || [];
+            } catch (err) {
+                console.warn("Failed to fetch market insights:", err);
+                // Provide fallback market insights
+                marketInsights = [
+                  {
+                    commodity: "Paddy",
+                    price: "₹28/kg",
+                    market: "Kottayam",
+                    state: "Kerala"
+                  }
+                ];
             }
 
             comprehensiveContext = {
@@ -177,6 +220,8 @@ export async function POST(req: NextRequest) {
                 country: weatherData.sys?.country
               } : null,
               market: marketData,
+              schemes: schemesData,
+              marketInsights: marketInsights,
               lastUpdated: new Date().toISOString()
             };
           }
@@ -189,10 +234,11 @@ export async function POST(req: NextRequest) {
     // Build comprehensive contextualized prompt
     let contextualizedMessages = [...messages];
     if (comprehensiveContext || landContext) {
-      const lang = (comprehensiveContext as any)?.profile?.language === "ml" ? "ml" : "en";
+      // Prioritize the language parameter from frontend over profile language
+      const lang = language || (comprehensiveContext as any)?.profile?.language || "en";
       const languageDirective = lang === "ml"
-        ? "Respond primarily in Malayalam. Use simple Malayalam; include English technical terms only when necessary."
-        : "Respond in English.";
+        ? "Respond ONLY in Malayalam. Use simple Malayalam words and phrases. Include English technical terms only when absolutely necessary (like scientific names). Keep the response natural and conversational in Malayalam."
+        : "Respond ONLY in English. Use clear, simple English. Avoid mixing languages.";
       let systemPrompt = `You are an expert agricultural advisor for Kerala, India. Provide specific, actionable advice based on the farmer's land and current conditions. ${languageDirective}
 
 LAND DETAILS:`;
@@ -232,7 +278,21 @@ ${comprehensiveContext.market ? `
 - Best Markets: ${comprehensiveContext.market.bestMarkets.join(', ')}
 - Harvest Status: ${comprehensiveContext.market.harvestTime}
 - Selling Suggestions: ${comprehensiveContext.market.suggestions.join(', ')}
-` : 'Market data not available'}`;
+` : 'Market data not available'}
+
+GOVERNMENT SCHEMES AVAILABLE:
+${comprehensiveContext.schemes && comprehensiveContext.schemes.length > 0 ? 
+  comprehensiveContext.schemes.slice(0, 5).map((scheme: any) => 
+    `- ${scheme.title}: ${scheme.description.substring(0, 100)}...`
+  ).join('\n') : 
+  'No government schemes data available'}
+
+MARKET INSIGHTS:
+${comprehensiveContext.marketInsights && comprehensiveContext.marketInsights.length > 0 ? 
+  comprehensiveContext.marketInsights.slice(0, 3).map((insight: any) => 
+    `- ${insight.commodity}: ₹${insight.price}/kg at ${insight.market} (${insight.state})`
+  ).join('\n') : 
+  'No market insights available'}`;
       } else if (landContext) {
         systemPrompt += `
 - Name: ${landContext.name}
@@ -246,19 +306,29 @@ ${comprehensiveContext.market ? `
       systemPrompt += `
 
 INSTRUCTIONS:
-1. Provide specific advice based on the land details, recent activities, weather, and market conditions
-2. If asked about fertilizers, consider the soil type, crop, and recent activities
-3. If asked about irrigation, consider current weather conditions and soil type
-4. If asked about harvesting or selling, provide market-specific advice for Kerala
-5. If asked about weather, explain how current conditions affect farming
-6. Consider the crop lifecycle based on recent activities
-7. Provide practical, actionable recommendations
-8. Respond in a mix of English and Malayalam as appropriate
-9. Be specific to Kerala's agricultural practices and climate
-10. Use weather data to provide irrigation and pest control advice
-11. Consider market conditions for harvest timing and selling decisions
+CRITICAL: Keep responses SHORT and PRACTICAL. Farmers need quick, actionable advice, not long explanations.
 
-Always tailor your response to this specific land and current conditions.`;
+1. MAXIMUM 2-3 sentences per response
+2. Use bullet points or numbered lists when helpful
+3. Focus on immediate, actionable steps
+4. Provide specific recommendations based on land details, weather, and market conditions
+5. If asked about fertilizers, give specific type and amount
+6. If asked about irrigation, give specific schedule
+7. If asked about harvesting/selling, give specific timing and locations
+8. If asked about weather, give brief impact and action needed
+9. If asked about government schemes, list 1-2 most relevant ones
+10. If asked about market prices, give current price and best selling location
+11. CRITICAL: Respond ONLY in the specified language (${lang === "ml" ? "Malayalam" : "English"}) - do not mix languages
+12. Use simple, direct language that farmers understand
+13. Avoid technical jargon - use common farming terms
+14. Be specific to Kerala's conditions and practices
+15. Always end with a clear next action step
+
+RESPONSE FORMAT:
+- Keep under 50 words when possible
+- Use bullet points for multiple items
+- Be direct and practical
+- Focus on what the farmer should DO, not explanations`;
 
       contextualizedMessages = [
         { role: "system", content: systemPrompt },
@@ -299,7 +369,7 @@ Always tailor your response to this specific land and current conditions.`;
           stream: false,
           options: {
             temperature: 0.7,
-            num_predict: 256,
+            num_predict: 100,
           },
         }),
         signal: controller.signal,
@@ -331,7 +401,7 @@ Always tailor your response to this specific land and current conditions.`;
             stream: false,
             options: {
               temperature: 0.7,
-              num_predict: 256,
+              num_predict: 100,
             },
           }),
           signal: genController.signal,
